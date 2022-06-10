@@ -36,10 +36,14 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getAuthorizationParamsString = exports.getAuthorization = void 0;
+exports.createToken = exports.getAuthorizationParamsString = exports.getAuthorization = void 0;
 var crypto = require("crypto");
+var https = require("https");
 var rs = require("randomstring");
 var base64url_1 = require("base64url");
+var store = {
+    code_verifier: ""
+};
 // Percent encoding
 var percentEncode = function (str) {
     return encodeURIComponent(str).replace(/[!*()']/g, function (character) {
@@ -148,6 +152,7 @@ var getRadomString = function (len) {
 };
 var getCodeChallenge = function () {
     var code_verifier = rs.generate(128);
+    store.code_verifier = code_verifier;
     var base64Digest = crypto
         .createHash("sha256")
         .update(code_verifier)
@@ -183,3 +188,36 @@ var getAuthorizationParamsString = function (scope) { return __awaiter(void 0, v
     });
 }); };
 exports.getAuthorizationParamsString = getAuthorizationParamsString;
+var createToken = function (code) {
+    return new Promise(function (res, rej) {
+        var request = https.request("https://api.twitter.com/2/oauth2/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        }, function (resp) {
+            var data = "";
+            resp.on("data", function (chunk) {
+                data += chunk.toString();
+            });
+            resp.on("end", function () {
+                console.log("Request ended!");
+                res(JSON.stringify(data));
+            });
+            resp.on("error", function (err) {
+                console.error(err);
+                rej(err);
+            });
+        });
+        var body = {
+            code: code,
+            grant_type: "authorization_code",
+            client_id: process.env.CLIENT_ID,
+            redirect_uri: process.env.STAGING_LINK,
+            code_verifier: store.code_verifier
+        };
+        request.write(new URLSearchParams(body).toString());
+        request.end();
+    });
+};
+exports.createToken = createToken;

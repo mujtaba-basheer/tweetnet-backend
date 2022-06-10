@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import * as https from "https";
-import { getAuthorization, getAuthorizationParamsString } from "../utils/auth";
+import {
+  getAuthorization,
+  getAuthorizationParamsString,
+  createToken,
+} from "../utils/auth";
 
 export const requestToken = (req: Request, res: Response) => {
   const httpMethod = "POST",
@@ -44,7 +48,8 @@ export const authorizationUrl = async (req: Request, res: Response) => {
   });
 };
 
-export const callback = (req: Request, res: Response) => {
-  console.log();
-  res.json({ status: true, data: `${JSON.stringify(req.query)}` });
+export const callback = async (req: Request, res: Response) => {
+  const code = req.query.code as string;
+  const token = await createToken(code);
+  res.json({ status: true, data: { token } });
 };

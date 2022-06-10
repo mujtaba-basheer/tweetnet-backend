@@ -1,6 +1,11 @@
 import * as crypto from "crypto";
+import * as https from "https";
 import rs = require("randomstring");
 import base64url from "base64url";
+
+const store = {
+  code_verifier: "",
+};
 
 // Percent encoding
 const percentEncode = (str: string) => {
@@ -155,6 +160,7 @@ const getRadomString: (len: number) => Promise<string> = (len: number) => {
 
 const getCodeChallenge = () => {
   const code_verifier = rs.generate(128);
+  store.code_verifier = code_verifier;
   const base64Digest = crypto
     .createHash("sha256")
     .update(code_verifier)
@@ -182,4 +188,43 @@ export const getAuthorizationParamsString = async (scope: string[]) => {
   }
 
   return attrs.join("&");
+};
+
+export const createToken = (code: string) => {
+  return new Promise((res, rej) => {
+    const request = https.request(
+      "https://api.twitter.com/2/oauth2/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      },
+      (resp) => {
+        let data = "";
+        resp.on("data", (chunk) => {
+          data += chunk.toString();
+        });
+        resp.on("end", () => {
+          console.log("Request ended!");
+          res(JSON.stringify(data));
+        });
+        resp.on("error", (err) => {
+          console.error(err);
+          rej(err);
+        });
+      }
+    );
+
+    const body = {
+      code,
+      grant_type: "authorization_code",
+      client_id: process.env.CLIENT_ID,
+      redirect_uri: process.env.STAGING_LINK,
+      code_verifier: store.code_verifier,
+    };
+
+    request.write(new URLSearchParams(body).toString());
+    request.end();
+  });
 };
