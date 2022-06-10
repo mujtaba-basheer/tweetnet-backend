@@ -174,7 +174,10 @@ export const getAuthorizationParamsString = async (scope: string[]) => {
   const defaultParams = {
     response_type: "code",
     client_id: process.env.CLIENT_ID,
-    redirect_uri: process.env.REDIRECT_URI,
+    redirect_uri:
+      process.env.NODE_ENV === "production"
+        ? process.env.REDIRECT_URI
+        : process.env.REDIRECT_URI_DEV,
     scope: scope.join(" "),
     state: await getRadomString(100),
     code_challenge: getCodeChallenge(),
@@ -206,8 +209,7 @@ export const createToken = (code: string) => {
           data += chunk.toString();
         });
         resp.on("end", () => {
-          console.log("Request ended!");
-          res(JSON.stringify(data));
+          res(JSON.parse(data));
         });
         resp.on("error", (err) => {
           console.error(err);
@@ -220,7 +222,10 @@ export const createToken = (code: string) => {
       code,
       grant_type: "authorization_code",
       client_id: process.env.CLIENT_ID,
-      redirect_uri: process.env.REDIRECT_URI,
+      redirect_uri:
+        process.env.NODE_ENV === "production"
+          ? process.env.REDIRECT_URI
+          : process.env.REDIRECT_URI_DEV,
       code_verifier: store.code_verifier,
     };
 

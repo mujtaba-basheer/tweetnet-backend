@@ -91,6 +91,7 @@ var callback = function (req, res) { return __awaiter(void 0, void 0, void 0, fu
                 return [4 /*yield*/, (0, auth_1.createToken)(code)];
             case 1:
                 token = _a.sent();
+                console.log({ token: token });
                 res.json({ status: true, data: { token: token } });
                 return [2 /*return*/];
         }

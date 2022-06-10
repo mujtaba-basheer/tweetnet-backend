@@ -51,5 +51,6 @@ export const authorizationUrl = async (req: Request, res: Response) => {
 export const callback = async (req: Request, res: Response) => {
   const code = req.query.code as string;
   const token = await createToken(code);
+  console.log({ token });
   res.json({ status: true, data: { token } });
 };
