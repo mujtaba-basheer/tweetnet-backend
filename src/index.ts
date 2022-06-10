@@ -1,7 +1,7 @@
 import * as express from "express";
 import { config } from "dotenv";
 import * as cors from "cors";
-// import routes from "./routes.js";
+import routes from "./routes.js";
 
 // importing error handlers
 // import { notFound, errorHandler } from "./middleware/error.js";
@@ -11,7 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
-// app.use("/api", routes);
+app.use("/api", routes);
 
 // test endpoint
 app.get("/", (req, res) => {

@@ -1,35 +1,15 @@
 import { Router } from "express";
-import {
-  addSubscriber,
-  getSubscribers,
-  contactFontaine,
-  locateDealer,
-  buildTrailer,
-  literature,
-  enquire,
-} from "./controller.js";
+import { requestToken, callback, authorizationUrl } from "./apis/auth";
 
 const router = Router();
 
-// subscribe
-router.post("/subscribe", addSubscriber);
+// request token
+router.get("/request_token", requestToken);
 
-// contact fontaine
-router.post("/contact", contactFontaine);
+// authorization url
+router.get("/authorize", authorizationUrl);
 
-// contact fontaine
-router.post("/dealer", locateDealer);
-
-// build trailer
-router.post("/build-trailer", buildTrailer);
-
-// literature
-router.post("/literature", literature);
-
-// enquire
-router.post("/enquire", enquire);
-
-// test
-router.get("/subscribers", getSubscribers);
+// callback
+router.post("/callback", callback);
 
 export default router;

@@ -3,14 +3,14 @@ exports.__esModule = true;
 var express = require("express");
 var dotenv_1 = require("dotenv");
 var cors = require("cors");
-// import routes from "./routes.js";
+var routes_js_1 = require("./routes.js");
 // importing error handlers
 // import { notFound, errorHandler } from "./middleware/error.js";
 (0, dotenv_1.config)();
 var app = express();
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
-// app.use("/api", routes);
+app.use("/api", routes_js_1["default"]);
 // test endpoint
 app.get("/", function (req, res) {
     res.send("API is running\n");
