@@ -83,7 +83,7 @@ var authorizationUrl = function (req, res) { return __awaiter(void 0, void 0, vo
 }); };
 exports.authorizationUrl = authorizationUrl;
 var callback = function (req, res) {
-    console.log(req.body);
-    res.json({ status: true, data: req.body });
+    console.log();
+    res.json({ status: true, data: "".concat(req.query) });
 };
 exports.callback = callback;

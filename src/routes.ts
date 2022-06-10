@@ -10,6 +10,6 @@ router.get("/request_token", requestToken);
 router.get("/authorize", authorizationUrl);
 
 // callback
-router.post("/callback", callback);
+router.get("/callback", callback);
 
 export default router;

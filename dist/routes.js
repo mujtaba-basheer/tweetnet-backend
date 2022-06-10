@@ -8,5 +8,5 @@ router.get("/request_token", auth_1.requestToken);
 // authorization url
 router.get("/authorize", auth_1.authorizationUrl);
 // callback
-router.post("/callback", auth_1.callback);
+router.get("/callback", auth_1.callback);
 exports["default"] = router;

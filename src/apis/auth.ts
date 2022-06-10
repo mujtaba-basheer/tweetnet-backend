@@ -45,6 +45,6 @@ export const authorizationUrl = async (req: Request, res: Response) => {
 };
 
 export const callback = (req: Request, res: Response) => {
-  console.log(req.body);
-  res.json({ status: true, data: req.body });
+  console.log();
+  res.json({ status: true, data: `${req.query}` });
 };
