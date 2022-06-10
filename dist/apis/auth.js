@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.callback = exports.authorizationUrl = exports.requestToken = void 0;
+exports.getToken = exports.authorizationUrl = exports.requestToken = void 0;
 var https = require("https");
 var auth_1 = require("../utils/auth");
 var requestToken = function (req, res) {
@@ -82,19 +82,18 @@ var authorizationUrl = function (req, res) { return __awaiter(void 0, void 0, vo
     });
 }); };
 exports.authorizationUrl = authorizationUrl;
-var callback = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+var getToken = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var code, token;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                code = req.query.code;
+                code = req.body.code;
                 return [4 /*yield*/, (0, auth_1.createToken)(code)];
             case 1:
                 token = _a.sent();
-                console.log({ token: token });
                 res.json({ status: true, data: { token: token } });
                 return [2 /*return*/];
         }
     });
 }); };
-exports.callback = callback;
+exports.getToken = getToken;

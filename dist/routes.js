@@ -7,6 +7,6 @@ var router = (0, express_1.Router)();
 router.get("/request_token", auth_1.requestToken);
 // authorization url
 router.get("/authorize", auth_1.authorizationUrl);
-// callback
-router.get("/callback", auth_1.callback);
+// access token
+router.post("/token", auth_1.getToken);
 exports["default"] = router;

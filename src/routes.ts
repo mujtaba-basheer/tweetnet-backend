@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requestToken, callback, authorizationUrl } from "./apis/auth";
+import { requestToken, getToken, authorizationUrl } from "./apis/auth";
 
 const router = Router();
 
@@ -9,7 +9,7 @@ router.get("/request_token", requestToken);
 // authorization url
 router.get("/authorize", authorizationUrl);
 
-// callback
-router.get("/callback", callback);
+// access token
+router.post("/token", getToken);
 
 export default router;
