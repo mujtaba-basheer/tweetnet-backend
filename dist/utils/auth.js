@@ -213,7 +213,7 @@ var createToken = function (code) {
             code: code,
             grant_type: "authorization_code",
             client_id: process.env.CLIENT_ID,
-            redirect_uri: process.env.STAGING_LINK,
+            redirect_uri: process.env.REDIRECT_URI,
             code_verifier: store.code_verifier
         };
         request.write(new URLSearchParams(body).toString());
