@@ -3,7 +3,7 @@ import * as https from "https";
 import { getUserDetails } from "../utils/user";
 
 export const getFollows = async (req: Request, res: Response) => {
-  const token = req.headers.Authorization as string;
+  const token = req.headers.authorization as string;
   const user_id = (await getUserDetails(token)).data.id;
 
   const request = https.request(
@@ -23,7 +23,10 @@ export const getFollows = async (req: Request, res: Response) => {
         console.error(err);
       });
       resp.on("end", () => {
-        res.json(JSON.parse(data));
+        res.json({
+          status: true,
+          data: JSON.parse(data),
+        });
       });
     }
   );

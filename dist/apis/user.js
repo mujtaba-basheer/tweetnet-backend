@@ -44,7 +44,7 @@ var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, 
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                token = req.headers.Authorization;
+                token = req.headers.authorization;
                 return [4 /*yield*/, (0, user_1.getUserDetails)(token)];
             case 1:
                 user_id = (_a.sent()).data.id;
@@ -62,7 +62,10 @@ var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, 
                         console.error(err);
                     });
                     resp.on("end", function () {
-                        res.json(JSON.parse(data));
+                        res.json({
+                            status: true,
+                            data: JSON.parse(data)
+                        });
                     });
                 });
                 request.end();
