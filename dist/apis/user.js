@@ -115,7 +115,8 @@ var likeTweet = function (req, res) { return __awaiter(void 0, void 0, void 0, f
         request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/likes"), {
             method: "POST",
             headers: {
-                Authorization: "Bearer ".concat(token)
+                Authorization: "Bearer ".concat(token),
+                "Content-Type": "application/json"
             }
         }, function (resp) {
             var data = "";
@@ -147,7 +148,8 @@ var retweetTweet = function (req, res) { return __awaiter(void 0, void 0, void 0
         request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/retweets"), {
             method: "POST",
             headers: {
-                Authorization: "Bearer ".concat(token)
+                Authorization: "Bearer ".concat(token),
+                "Content-Type": "application/json"
             }
         }, function (resp) {
             var data = "";

@@ -77,6 +77,7 @@ export const likeTweet = async (req: Request, res: Response) => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     },
     (resp) => {
@@ -110,6 +111,7 @@ export const retweetTweet = async (req: Request, res: Response) => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     },
     (resp) => {
