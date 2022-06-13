@@ -36,64 +36,38 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getToken = exports.authorizationUrl = exports.requestToken = void 0;
+exports.getFollows = void 0;
 var https = require("https");
-var auth_1 = require("../utils/auth");
-var requestToken = function (req, res) {
-    var httpMethod = "POST", baseUrl = "https://api.twitter.com/oauth/request_token", reqParams = {
-        oauth_callback: "".concat(process.env.STAGING_LINK, "/api/callback")
-    };
-    console.log((0, auth_1.getAuthorization)(httpMethod, baseUrl, {}));
-    var request = https.request("".concat(baseUrl, "?").concat(new URLSearchParams(reqParams).toString()), {
-        method: httpMethod,
-        headers: {
-            Authorization: (0, auth_1.getAuthorization)(httpMethod, baseUrl, {})
-        }
-    }, function (resp) {
-        resp.on("data", function (chunk) {
-            console.log(JSON.stringify(chunk.toString()));
-        });
-        resp.on("error", function (err) {
-            console.error(err);
-        });
-        resp.on("end", function () {
-            console.log("Data fetched!");
-        });
-    });
-    request.end();
-};
-exports.requestToken = requestToken;
-var authorizationUrl = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var baseUrl, scope, qs;
+var user_1 = require("../utils/user");
+var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var token, user_id, request;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                baseUrl = "https://twitter.com/i/oauth2/authorize";
-                scope = ["tweet.read", "follows.read", "follows.write", "users.read"];
-                return [4 /*yield*/, (0, auth_1.getAuthorizationParamsString)(scope)];
+                token = req.headers.Authorization;
+                return [4 /*yield*/, (0, user_1.getUserDetails)(token)];
             case 1:
-                qs = _a.sent();
-                res.json({
-                    status: true,
-                    data: baseUrl + "?" + qs
+                user_id = (_a.sent()).data.id;
+                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/followers?max_results=10"), {
+                    method: "GET",
+                    headers: {
+                        Authorization: "Bearer ".concat(token)
+                    }
+                }, function (resp) {
+                    var data = "";
+                    resp.on("data", function (chunk) {
+                        data += chunk.toString();
+                    });
+                    resp.on("error", function (err) {
+                        console.error(err);
+                    });
+                    resp.on("end", function () {
+                        res.json(JSON.parse(data));
+                    });
                 });
+                request.end();
                 return [2 /*return*/];
         }
     });
 }); };
-exports.authorizationUrl = authorizationUrl;
-var getToken = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var code, token;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                code = req.body.code;
-                return [4 /*yield*/, (0, auth_1.createToken)(code)];
-            case 1:
-                token = _a.sent();
-                res.json({ status: true, data: { token: token } });
-                return [2 /*return*/];
-        }
-    });
-}); };
-exports.getToken = getToken;
+exports.getFollows = getFollows;
