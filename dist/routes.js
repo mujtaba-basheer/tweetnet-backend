@@ -12,4 +12,10 @@ router.get("/authorize", auth_1.authorizationUrl);
 router.post("/token", auth_1.getToken);
 // follows
 router.get("/follows", user_1.getFollows);
+// tweets
+router.get("/tweets/:id", user_1.getTweets);
+// like
+router.post("/like/:id", user_1.likeTweet);
+// retweet
+router.post("/retweet/:id", user_1.retweetTweet);
 exports["default"] = router;

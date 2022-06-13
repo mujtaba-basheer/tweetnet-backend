@@ -69,7 +69,14 @@ var authorizationUrl = function (req, res) { return __awaiter(void 0, void 0, vo
         switch (_a.label) {
             case 0:
                 baseUrl = "https://twitter.com/i/oauth2/authorize";
-                scope = ["tweet.read", "follows.read", "follows.write", "users.read"];
+                scope = [
+                    "tweet.read",
+                    "follows.read",
+                    "users.read",
+                    "like.read",
+                    "like.write",
+                    "tweet.write",
+                ];
                 return [4 /*yield*/, (0, auth_1.getAuthorizationParamsString)(scope)];
             case 1:
                 qs = _a.sent();

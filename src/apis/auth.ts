@@ -39,7 +39,14 @@ export const requestToken = (req: Request, res: Response) => {
 
 export const authorizationUrl = async (req: Request, res: Response) => {
   const baseUrl = "https://twitter.com/i/oauth2/authorize";
-  const scope = ["tweet.read", "follows.read", "follows.write", "users.read"];
+  const scope = [
+    "tweet.read",
+    "follows.read",
+    "users.read",
+    "like.read",
+    "like.write",
+    "tweet.write",
+  ];
   const qs = await getAuthorizationParamsString(scope);
 
   res.json({
