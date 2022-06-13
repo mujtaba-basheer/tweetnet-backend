@@ -20,9 +20,9 @@ router.get("/follows", getFollows);
 router.get("/tweets/:id", getTweets);
 
 // like
-router.post("/like/:id", likeTweet);
+router.post("/like", likeTweet);
 
 // retweet
-router.post("/retweet/:id", retweetTweet);
+router.post("/retweet", retweetTweet);
 
 export default router;

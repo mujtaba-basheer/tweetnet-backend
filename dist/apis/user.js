@@ -63,7 +63,6 @@ var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, 
                         console.error(err);
                     });
                     resp.on("end", function () {
-                        console.log({ data: JSON.parse(data) });
                         res.json({
                             status: true,
                             data: JSON.parse(data)
@@ -109,66 +108,78 @@ exports.getTweets = getTweets;
 var likeTweet = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var token, user_id, tweet_id, request;
     return __generator(this, function (_a) {
-        token = req.headers.authorization;
-        user_id = req.params.id;
-        tweet_id = req.body.tweet_id;
-        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/likes"), {
-            method: "POST",
-            headers: {
-                Authorization: "Bearer ".concat(token),
-                "Content-Type": "application/json"
-            }
-        }, function (resp) {
-            var data = "";
-            resp.on("data", function (chunk) {
-                data += chunk.toString();
-            });
-            resp.on("error", function (err) {
-                console.error(err);
-            });
-            resp.on("end", function () {
-                res.json({
-                    status: true,
-                    data: JSON.parse(data)
+        switch (_a.label) {
+            case 0:
+                token = req.headers.authorization;
+                return [4 /*yield*/, (0, user_1.getUserDetails)(token)];
+            case 1:
+                user_id = (_a.sent()).data.id;
+                tweet_id = req.body.tweet_id;
+                console.log({ body: req.body });
+                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/likes"), {
+                    method: "POST",
+                    headers: {
+                        Authorization: "Bearer ".concat(token),
+                        "Content-Type": "application/json"
+                    }
+                }, function (resp) {
+                    var data = "";
+                    resp.on("data", function (chunk) {
+                        data += chunk.toString();
+                    });
+                    resp.on("error", function (err) {
+                        console.error(err);
+                    });
+                    resp.on("end", function () {
+                        console.log(JSON.parse(data));
+                        res.json({
+                            status: true,
+                            data: JSON.parse(data)
+                        });
+                    });
                 });
-            });
-        });
-        request.write(JSON.stringify({ tweet_id: tweet_id }));
-        request.end();
-        return [2 /*return*/];
+                request.write(JSON.stringify({ tweet_id: tweet_id }));
+                request.end();
+                return [2 /*return*/];
+        }
     });
 }); };
 exports.likeTweet = likeTweet;
 var retweetTweet = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var token, user_id, tweet_id, request;
     return __generator(this, function (_a) {
-        token = req.headers.authorization;
-        user_id = req.params.id;
-        tweet_id = req.body.tweet_id;
-        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/retweets"), {
-            method: "POST",
-            headers: {
-                Authorization: "Bearer ".concat(token),
-                "Content-Type": "application/json"
-            }
-        }, function (resp) {
-            var data = "";
-            resp.on("data", function (chunk) {
-                data += chunk.toString();
-            });
-            resp.on("error", function (err) {
-                console.error(err);
-            });
-            resp.on("end", function () {
-                res.json({
-                    status: true,
-                    data: JSON.parse(data)
+        switch (_a.label) {
+            case 0:
+                token = req.headers.authorization;
+                return [4 /*yield*/, (0, user_1.getUserDetails)(token)];
+            case 1:
+                user_id = (_a.sent()).data.id;
+                tweet_id = req.body.tweet_id;
+                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/retweets"), {
+                    method: "POST",
+                    headers: {
+                        Authorization: "Bearer ".concat(token),
+                        "Content-Type": "application/json"
+                    }
+                }, function (resp) {
+                    var data = "";
+                    resp.on("data", function (chunk) {
+                        data += chunk.toString();
+                    });
+                    resp.on("error", function (err) {
+                        console.error(err);
+                    });
+                    resp.on("end", function () {
+                        res.json({
+                            status: true,
+                            data: JSON.parse(data)
+                        });
+                    });
                 });
-            });
-        });
-        request.write(JSON.stringify({ tweet_id: tweet_id }));
-        request.end();
-        return [2 /*return*/];
+                request.write(JSON.stringify({ tweet_id: tweet_id }));
+                request.end();
+                return [2 /*return*/];
+        }
     });
 }); };
 exports.retweetTweet = retweetTweet;
