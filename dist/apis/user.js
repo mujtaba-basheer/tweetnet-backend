@@ -80,7 +80,7 @@ var getTweets = function (req, res) { return __awaiter(void 0, void 0, void 0, f
     return __generator(this, function (_a) {
         token = req.headers.authorization;
         user_id = req.params.id;
-        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?max_results=10"), {
+        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?max_results=20"), {
             method: "GET",
             headers: {
                 Authorization: "Bearer ".concat(token)
