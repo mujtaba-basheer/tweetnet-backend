@@ -18,4 +18,6 @@ router.get("/tweets/:id", user_1.getTweets);
 router.post("/like", user_1.likeTweet);
 // retweet
 router.post("/retweet", user_1.retweetTweet);
+// reply
+router.post("/reply", user_1.replyToTweet);
 exports["default"] = router;

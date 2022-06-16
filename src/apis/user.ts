@@ -8,7 +8,7 @@ export const getFollows = async (req: Request, res: Response) => {
   console.log({ user_id });
 
   const request = https.request(
-    `https://api.twitter.com/2/users/${user_id}/followers?max_results=10`,
+    `https://api.twitter.com/2/users/${user_id}/followers?max_results=20`,
     {
       method: "GET",
       headers: {
@@ -132,5 +132,45 @@ export const retweetTweet = async (req: Request, res: Response) => {
     }
   );
   request.write(JSON.stringify({ tweet_id }));
+  request.end();
+};
+
+export const replyToTweet = async (req: Request, res: Response) => {
+  const token = req.headers.authorization as string;
+  const { tweet_id, text } = req.body;
+
+  const body = {
+    text,
+    reply: {
+      in_reply_to_tweet_id: tweet_id,
+    },
+  };
+
+  const request = https.request(
+    "https://api.twitter.com/2/tweets",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
+    (resp) => {
+      let data = "";
+      resp.on("data", (chunk) => {
+        data += chunk.toString();
+      });
+      resp.on("error", (err) => {
+        console.error(err);
+      });
+      resp.on("end", () => {
+        res.json({
+          status: true,
+          data: JSON.parse(data),
+        });
+      });
+    }
+  );
+  request.write(JSON.stringify(body));
   request.end();
 };

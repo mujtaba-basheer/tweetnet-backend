@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.retweetTweet = exports.likeTweet = exports.getTweets = exports.getFollows = void 0;
+exports.replyToTweet = exports.retweetTweet = exports.likeTweet = exports.getTweets = exports.getFollows = void 0;
 var https = require("https");
 var user_1 = require("../utils/user");
 var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
@@ -49,7 +49,7 @@ var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, 
             case 1:
                 user_id = (_a.sent()).data.id;
                 console.log({ user_id: user_id });
-                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/followers?max_results=10"), {
+                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/followers?max_results=20"), {
                     method: "GET",
                     headers: {
                         Authorization: "Bearer ".concat(token)
@@ -80,7 +80,7 @@ var getTweets = function (req, res) { return __awaiter(void 0, void 0, void 0, f
     return __generator(this, function (_a) {
         token = req.headers.authorization;
         user_id = req.params.id;
-        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?max_results=20"), {
+        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?max_results=10"), {
             method: "GET",
             headers: {
                 Authorization: "Bearer ".concat(token)
@@ -183,3 +183,41 @@ var retweetTweet = function (req, res) { return __awaiter(void 0, void 0, void 0
     });
 }); };
 exports.retweetTweet = retweetTweet;
+var replyToTweet = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var token, _a, tweet_id, text, body, request;
+    return __generator(this, function (_b) {
+        token = req.headers.authorization;
+        _a = req.body, tweet_id = _a.tweet_id, text = _a.text;
+        body = {
+            text: text,
+            reply: {
+                in_reply_to_tweet_id: tweet_id
+            }
+        };
+        request = https.request("https://api.twitter.com/2/tweets", {
+            method: "POST",
+            headers: {
+                Authorization: "Bearer ".concat(token),
+                "Content-Type": "application/json"
+            }
+        }, function (resp) {
+            var data = "";
+            resp.on("data", function (chunk) {
+                data += chunk.toString();
+            });
+            resp.on("error", function (err) {
+                console.error(err);
+            });
+            resp.on("end", function () {
+                res.json({
+                    status: true,
+                    data: JSON.parse(data)
+                });
+            });
+        });
+        request.write(JSON.stringify(body));
+        request.end();
+        return [2 /*return*/];
+    });
+}); };
+exports.replyToTweet = replyToTweet;
