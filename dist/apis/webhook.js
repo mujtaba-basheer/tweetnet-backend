@@ -39,6 +39,7 @@ exports.__esModule = true;
 exports.testWebhook = void 0;
 var testWebhook = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
+        console.log(JSON.stringify(req.body));
         res.json(req.body);
         return [2 /*return*/];
     });
