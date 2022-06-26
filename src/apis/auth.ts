@@ -12,7 +12,6 @@ export const requestToken = (req: Request, res: Response) => {
     reqParams = {
       oauth_callback: `${process.env.STAGING_LINK}/api/callback`,
     };
-  console.log(getAuthorization(httpMethod, baseUrl, {}));
 
   const request = https.request(
     `${baseUrl}?${new URLSearchParams(reqParams).toString()}`,
@@ -58,6 +57,8 @@ export const authorizationUrl = async (req: Request, res: Response) => {
 export const getToken = async (req: Request, res: Response) => {
   const code = req.body.code;
   const token = await createToken(code);
+
+  // TODO: Get username from token, and check if it's valid
 
   res.json({ status: true, data: { token } });
 };

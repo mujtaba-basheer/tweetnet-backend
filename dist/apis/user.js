@@ -48,8 +48,7 @@ var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, 
                 return [4 /*yield*/, (0, user_1.getUserDetails)(token)];
             case 1:
                 user_id = (_a.sent()).data.id;
-                console.log({ user_id: user_id });
-                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/followers?max_results=20"), {
+                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/followers?max_results=10"), {
                     method: "GET",
                     headers: {
                         Authorization: "Bearer ".concat(token)

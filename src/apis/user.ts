@@ -5,10 +5,9 @@ import { getUserDetails } from "../utils/user";
 export const getFollows = async (req: Request, res: Response) => {
   const token = req.headers.authorization as string;
   const user_id = (await getUserDetails(token)).data.id;
-  console.log({ user_id });
 
   const request = https.request(
-    `https://api.twitter.com/2/users/${user_id}/followers?max_results=20`,
+    `https://api.twitter.com/2/users/${user_id}/followers?max_results=10`,
     {
       method: "GET",
       headers: {

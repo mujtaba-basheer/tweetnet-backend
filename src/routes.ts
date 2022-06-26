@@ -7,6 +7,7 @@ import {
   replyToTweet,
   retweetTweet,
 } from "./apis/user";
+import { testWebhook } from "./apis/webhook";
 
 const router = Router();
 
@@ -33,5 +34,8 @@ router.post("/retweet", retweetTweet);
 
 // reply
 router.post("/reply", replyToTweet);
+
+// webhook
+router.post("/webhook", testWebhook);
 
 export default router;

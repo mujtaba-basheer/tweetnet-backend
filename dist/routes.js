@@ -3,6 +3,7 @@ exports.__esModule = true;
 var express_1 = require("express");
 var auth_1 = require("./apis/auth");
 var user_1 = require("./apis/user");
+var webhook_1 = require("./apis/webhook");
 var router = (0, express_1.Router)();
 // request token
 router.get("/request_token", auth_1.requestToken);
@@ -20,4 +21,6 @@ router.post("/like", user_1.likeTweet);
 router.post("/retweet", user_1.retweetTweet);
 // reply
 router.post("/reply", user_1.replyToTweet);
+// webhook
+router.post("/webhook", webhook_1.testWebhook);
 exports["default"] = router;
