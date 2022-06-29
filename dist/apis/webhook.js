@@ -37,9 +37,21 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 exports.__esModule = true;
 exports.testWebhook = void 0;
+var AWS = require("aws-sdk");
+var credentials = new AWS.Credentials({
+    accessKeyId: process.env.DYNAMODB_ACCESS_KEY_ID,
+    secretAccessKey: process.env.DYNAMODB_ACCESS_KEY_SECRET
+});
+var dynamodb = new AWS.DynamoDB({
+    apiVersion: "2012-08-10",
+    endpoint: "dynamodb.ap-south-1.amazonaws.com",
+    credentials: credentials
+});
 var testWebhook = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var user;
     return __generator(this, function (_a) {
-        console.log(JSON.stringify(req.body));
+        user = req.body;
+        console.log(JSON.stringify(user));
         res.json(req.body);
         return [2 /*return*/];
     });

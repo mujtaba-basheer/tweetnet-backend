@@ -2,6 +2,48 @@ import { Request, Response } from "express";
 import * as https from "https";
 import { getUserDetails } from "../utils/user";
 
+type AuthorDetail = {
+  id: string;
+  profile_image_url: string;
+  username: string;
+  name: string;
+};
+
+type MediaDetail =
+  | {
+      media_key: string;
+      type: "video";
+      preview_image_url: string;
+    }
+  | {
+      media_key: string;
+      type: "photo";
+      url: string;
+    };
+
+type TweetsResp = {
+  data: {
+    text: string;
+    id: string;
+    author_id: string;
+    author_details: AuthorDetail;
+    attachments?: {
+      media_keys: string[];
+    };
+    attachement_urls: string[];
+  }[];
+  includes: {
+    media: MediaDetail[];
+    users: AuthorDetail[];
+  };
+  meta: {
+    result_count: number;
+    newest_id: string;
+    oldest_id: string;
+    next_token: string;
+  };
+};
+
 export const getFollows = async (req: Request, res: Response) => {
   const token = req.headers.authorization as string;
   const user_id = (await getUserDetails(token)).data.id;
@@ -15,7 +57,7 @@ export const getFollows = async (req: Request, res: Response) => {
       },
     },
     (resp) => {
-      let data = "";
+      let data: string = "";
       resp.on("data", (chunk) => {
         data += chunk.toString();
       });
@@ -38,7 +80,7 @@ export const getTweets = async (req: Request, res: Response) => {
   const user_id = req.params.id;
 
   const request = https.request(
-    `https://api.twitter.com/2/users/${user_id}/tweets?max_results=10`,
+    `https://api.twitter.com/2/users/${user_id}/tweets?max_results=10&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url`,
     {
       method: "GET",
       headers: {
@@ -54,9 +96,39 @@ export const getTweets = async (req: Request, res: Response) => {
         console.error(err);
       });
       resp.on("end", () => {
+        const tweeetsResp: TweetsResp = JSON.parse(data);
+        const { data: tweets, includes, meta } = tweeetsResp;
+
+        for (const tweet of tweets) {
+          const { author_id } = tweet;
+          tweet.author_details = includes.users.find(
+            ({ id }) => id === author_id
+          );
+
+          if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
+            for (const media_key of tweet.attachments.media_keys) {
+              const media = includes.media.find(
+                (x) => x.media_key === media_key
+              );
+              let url: string;
+              if (media) {
+                if (media.type === "photo") url = media.url;
+                else url = media.preview_image_url;
+
+                if (!tweet.attachement_urls) {
+                  tweet.attachement_urls = [url];
+                } else tweet.attachement_urls.push(url);
+              }
+            }
+          }
+        }
+        for (const tweet of tweets) {
+          delete tweet.attachments;
+        }
+
         res.json({
           status: true,
-          data: JSON.parse(data),
+          data: { data: tweeetsResp.data, meta },
         });
       });
     }

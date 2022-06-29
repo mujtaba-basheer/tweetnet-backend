@@ -79,7 +79,7 @@ var getTweets = function (req, res) { return __awaiter(void 0, void 0, void 0, f
     return __generator(this, function (_a) {
         token = req.headers.authorization;
         user_id = req.params.id;
-        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?max_results=10"), {
+        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?max_results=10&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url"), {
             method: "GET",
             headers: {
                 Authorization: "Bearer ".concat(token)
@@ -93,9 +93,47 @@ var getTweets = function (req, res) { return __awaiter(void 0, void 0, void 0, f
                 console.error(err);
             });
             resp.on("end", function () {
+                var tweeetsResp = JSON.parse(data);
+                var tweets = tweeetsResp.data, includes = tweeetsResp.includes, meta = tweeetsResp.meta;
+                var _loop_1 = function (tweet) {
+                    var author_id = tweet.author_id;
+                    tweet.author_details = includes.users.find(function (_a) {
+                        var id = _a.id;
+                        return id === author_id;
+                    });
+                    if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
+                        var _loop_2 = function (media_key) {
+                            var media = includes.media.find(function (x) { return x.media_key === media_key; });
+                            var url = void 0;
+                            if (media) {
+                                if (media.type === "photo")
+                                    url = media.url;
+                                else
+                                    url = media.preview_image_url;
+                                if (!tweet.attachement_urls) {
+                                    tweet.attachement_urls = [url];
+                                }
+                                else
+                                    tweet.attachement_urls.push(url);
+                            }
+                        };
+                        for (var _b = 0, _c = tweet.attachments.media_keys; _b < _c.length; _b++) {
+                            var media_key = _c[_b];
+                            _loop_2(media_key);
+                        }
+                    }
+                };
+                for (var _i = 0, tweets_1 = tweets; _i < tweets_1.length; _i++) {
+                    var tweet = tweets_1[_i];
+                    _loop_1(tweet);
+                }
+                for (var _a = 0, tweets_2 = tweets; _a < tweets_2.length; _a++) {
+                    var tweet = tweets_2[_a];
+                    delete tweet.attachments;
+                }
                 res.json({
                     status: true,
-                    data: JSON.parse(data)
+                    data: { data: tweeetsResp.data, meta: meta }
                 });
             });
         });
