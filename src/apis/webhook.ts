@@ -100,8 +100,6 @@ export const memberAdded = async (
       TableName: "Users",
     };
 
-    console.log(JSON.stringify(params));
-
     dynamodb.putItem(params, (err, data) => {
       if (err) return next(new AppError(err.message, 503));
       res.json({
@@ -127,11 +125,11 @@ export const memberDeleted = async (
   try {
     const data = req.body as UserDeleted;
 
-    const { email } = data;
+    const { id } = data;
 
     const params: AWS.DynamoDB.GetItemInput | AWS.DynamoDB.DeleteItemInput = {
       Key: {
-        email: { S: email },
+        id: { S: id },
       },
       TableName: "Users",
     };

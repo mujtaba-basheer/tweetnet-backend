@@ -105,7 +105,6 @@ var memberAdded = function (req, res, next) { return __awaiter(void 0, void 0, v
                 },
                 TableName: "Users"
             };
-            console.log(JSON.stringify(params));
             dynamodb.putItem(params, function (err, data) {
                 if (err)
                     return next(new app_error_1["default"](err.message, 503));
@@ -123,14 +122,14 @@ var memberAdded = function (req, res, next) { return __awaiter(void 0, void 0, v
 }); };
 exports.memberAdded = memberAdded;
 var memberDeleted = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, email, params_1;
+    var data, id, params_1;
     return __generator(this, function (_a) {
         try {
             data = req.body;
-            email = data.email;
+            id = data.id;
             params_1 = {
                 Key: {
-                    email: { S: email }
+                    id: { S: id }
                 },
                 TableName: "Users"
             };
