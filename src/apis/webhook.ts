@@ -108,19 +108,30 @@ export const memberAdded = async (req: Request, res: Response) => {
 };
 
 export const memberDeleted = async (req: Request, res: Response) => {
+  type UserDeleted = {
+    id: string;
+    email: string;
+  };
+
   try {
-    const data = req.body;
-    console.log(JSON.stringify(data));
+    const data = req.body as UserDeleted;
 
-    res.json(data);
+    const { email } = data;
 
-    // dynamodb.putItem(params, (err, data) => {
-    //   if (err) throw new AppError(err.message, 503);
-    //   res.json({
-    //     status: true,
-    //     message: "User Added to DB",
-    //   });
-    // });
+    const params: AWS.DynamoDB.DeleteItemInput = {
+      Key: {
+        email: { S: email },
+      },
+      TableName: "Users",
+    };
+
+    dynamodb.deleteItem(params, (err, data) => {
+      if (err) throw new AppError(err.message, 503);
+      res.json({
+        status: true,
+        message: "User Deleted from DB",
+      });
+    });
   } catch (error) {
     throw new AppError(error.message, 500);
   }

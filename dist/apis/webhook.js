@@ -121,19 +121,25 @@ var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0,
 }); };
 exports.memberAdded = memberAdded;
 var memberDeleted = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var data;
+    var data, email, params;
     return __generator(this, function (_a) {
         try {
             data = req.body;
-            console.log(JSON.stringify(data));
-            res.json(data);
-            // dynamodb.putItem(params, (err, data) => {
-            //   if (err) throw new AppError(err.message, 503);
-            //   res.json({
-            //     status: true,
-            //     message: "User Added to DB",
-            //   });
-            // });
+            email = data.email;
+            params = {
+                Key: {
+                    email: { S: email }
+                },
+                TableName: "Users"
+            };
+            dynamodb.deleteItem(params, function (err, data) {
+                if (err)
+                    throw new app_error_1["default"](err.message, 503);
+                res.json({
+                    status: true,
+                    message: "User Deleted from DB"
+                });
+            });
         }
         catch (error) {
             throw new app_error_1["default"](error.message, 500);
