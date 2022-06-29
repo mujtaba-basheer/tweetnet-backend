@@ -57,61 +57,55 @@ var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0,
             id = user.id, email = user.email, membership = user.membership, profile = user.profile, created_at = user.created_at;
             params = {
                 Item: {
-                    id: id,
-                    email: email
+                    id: { S: id },
+                    email: { S: email },
+                    profile: {
+                        M: {
+                            usernames: {
+                                L: [{ S: profile["twitter-handle"] }]
+                            }
+                        }
+                    },
+                    membership: {
+                        M: {
+                            id: {
+                                S: membership.id
+                            },
+                            staus: {
+                                S: membership.status
+                            },
+                            subscribed_to: {
+                                S: membership.subscribed_to
+                            }
+                        }
+                    },
+                    stats: {
+                        M: {
+                            like: {
+                                M: {
+                                    count: { N: "0" },
+                                    last_posted: { S: "" }
+                                }
+                            },
+                            retweet: {
+                                M: {
+                                    count: { N: "0" },
+                                    last_posted: { S: "" }
+                                }
+                            },
+                            reply: {
+                                M: {
+                                    count: { N: "0" },
+                                    last_posted: { S: "" }
+                                }
+                            }
+                        }
+                    },
+                    created_at: { S: created_at }
                 },
                 TableName: "Users"
             };
-            // const params: AWS.DynamoDB.PutItemInput = {
-            //   Item: {
-            //     id: { S: id },
-            //     email: { S: email },
-            //     profile: {
-            //       M: {
-            //         usernames: {
-            //           L: [{ S: profile["twitter-handle"] }],
-            //         },
-            //       },
-            //     },
-            //     membership: {
-            //       M: {
-            //         id: {
-            //           S: membership.id,
-            //         },
-            //         staus: {
-            //           S: membership.status,
-            //         },
-            //         subscribed_to: {
-            //           S: membership.subscribed_to,
-            //         },
-            //       },
-            //     },
-            //     stats: {
-            //       M: {
-            //         like: {
-            //           M: {
-            //             count: { N: "0" },
-            //             last_posted: { S: "" },
-            //           },
-            //         },
-            //         retweet: {
-            //           M: {
-            //             count: { N: "0" },
-            //             last_posted: { S: "" },
-            //           },
-            //         },
-            //         reply: {
-            //           M: {
-            //             count: { N: "0" },
-            //             last_posted: { S: "" },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     created_at: { S: created_at },
-            //   },
-            //   TableName: "Users",
-            // };
+            console.log(JSON.stringify(params));
             dynamodb.putItem(params, function (err, data) {
                 if (err)
                     throw new app_error_1["default"](err.message, 503);
