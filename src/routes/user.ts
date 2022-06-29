@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   getFollows,
-  getTweets,
+  getMyTweets,
   likeTweet,
   replyToTweet,
   retweetTweet,
@@ -13,7 +13,7 @@ const userRouter = Router();
 userRouter.get("/follows", getFollows);
 
 // tweets
-userRouter.get("/tweets/:id", getTweets);
+userRouter.get("/my-tweets/:id", getMyTweets);
 
 // like
 userRouter.post("/like", likeTweet);

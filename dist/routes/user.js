@@ -6,7 +6,7 @@ var userRouter = (0, express_1.Router)();
 // follows
 userRouter.get("/follows", user_1.getFollows);
 // tweets
-userRouter.get("/tweets/:id", user_1.getTweets);
+userRouter.get("/my-tweets/:id", user_1.getMyTweets);
 // like
 userRouter.post("/like", user_1.likeTweet);
 // retweet
