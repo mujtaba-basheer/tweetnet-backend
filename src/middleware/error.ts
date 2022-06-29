@@ -1,5 +1,6 @@
 import { NextFunction } from "express";
-import AppError from "../utils/app-error.js";
+import { Request, Response } from "express";
+import AppError from "../utils/app-error";
 
 // for unspecified/unfound routes
 export const notFound = (

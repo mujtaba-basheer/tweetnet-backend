@@ -1,10 +1,10 @@
 "use strict";
 exports.__esModule = true;
 exports.errorHandler = exports.notFound = void 0;
-var app_error_js_1 = require("../utils/app-error.js");
+var app_error_1 = require("../utils/app-error");
 // for unspecified/unfound routes
 var notFound = function (req, res, next) {
-    return next(new app_error_js_1["default"]("Route does not exist.", 404));
+    return next(new app_error_1["default"]("Route does not exist.", 404));
 };
 exports.notFound = notFound;
 // error handler middleware

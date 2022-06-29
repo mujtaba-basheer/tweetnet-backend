@@ -49,7 +49,7 @@ var dynamodb = new AWS.DynamoDB({
     credentials: credentials,
     region: "ap-south-1"
 });
-var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+var memberAdded = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var user, id, email, membership, profile, created_at, params;
     return __generator(this, function (_a) {
         try {
@@ -108,7 +108,7 @@ var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0,
             console.log(JSON.stringify(params));
             dynamodb.putItem(params, function (err, data) {
                 if (err)
-                    throw new app_error_1["default"](err.message, 503);
+                    return next(new app_error_1["default"](err.message, 503));
                 res.json({
                     status: true,
                     message: "User Added to DB"
@@ -122,7 +122,7 @@ var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0,
     });
 }); };
 exports.memberAdded = memberAdded;
-var memberDeleted = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+var memberDeleted = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var data, email, params_1;
     return __generator(this, function (_a) {
         try {
@@ -136,10 +136,10 @@ var memberDeleted = function (req, res) { return __awaiter(void 0, void 0, void 
             };
             dynamodb.getItem(params_1, function (err, data) {
                 if (err)
-                    throw new app_error_1["default"](err.message, 503);
+                    return next(new app_error_1["default"](err.message, 503));
                 dynamodb.deleteItem(params_1, function (err, data) {
                     if (err)
-                        throw new app_error_1["default"](err.message, 503);
+                        return next(new app_error_1["default"](err.message, 503));
                     res.json({
                         status: true,
                         message: "User Deleted from DB"
@@ -148,7 +148,7 @@ var memberDeleted = function (req, res) { return __awaiter(void 0, void 0, void 
             });
         }
         catch (error) {
-            throw new app_error_1["default"](error.message, 500);
+            return [2 /*return*/, next(new app_error_1["default"](error.message, 500))];
         }
         return [2 /*return*/];
     });

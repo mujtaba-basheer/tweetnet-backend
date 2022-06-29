@@ -4,7 +4,7 @@ import * as cors from "cors";
 import { authRouter, userRouter, webhookRouter } from "./routes/index";
 
 // importing error handlers
-// import { notFound, errorHandler } from "./middleware/error.js";
+import { notFound, errorHandler } from "./middleware/error.js";
 
 config();
 const app = express();
@@ -20,8 +20,8 @@ app.get("/*", (req, res) => {
   res.send("API is running\n");
 });
 
-// app.use(notFound);
-// app.use(errorHandler);
+app.use(notFound);
+app.use(errorHandler);
 
 // spinning up the server
 const port = process.env.PORT || 5000;

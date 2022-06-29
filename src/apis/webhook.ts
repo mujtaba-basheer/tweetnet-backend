@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import AppError from "../utils/app-error";
 import * as AWS from "aws-sdk";
 
@@ -40,7 +40,11 @@ type Stat = {
   last_posted: DateConstructor;
 };
 
-export const memberAdded = async (req: Request, res: Response) => {
+export const memberAdded = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const user = req.body as User;
 
@@ -99,7 +103,7 @@ export const memberAdded = async (req: Request, res: Response) => {
     console.log(JSON.stringify(params));
 
     dynamodb.putItem(params, (err, data) => {
-      if (err) throw new AppError(err.message, 503);
+      if (err) return next(new AppError(err.message, 503));
       res.json({
         status: true,
         message: "User Added to DB",
@@ -110,7 +114,11 @@ export const memberAdded = async (req: Request, res: Response) => {
   }
 };
 
-export const memberDeleted = async (req: Request, res: Response) => {
+export const memberDeleted = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   type UserDeleted = {
     id: string;
     email: string;
@@ -129,9 +137,9 @@ export const memberDeleted = async (req: Request, res: Response) => {
     };
 
     dynamodb.getItem(params, (err, data) => {
-      if (err) throw new AppError(err.message, 503);
+      if (err) return next(new AppError(err.message, 503));
       dynamodb.deleteItem(params, (err, data) => {
-        if (err) throw new AppError(err.message, 503);
+        if (err) return next(new AppError(err.message, 503));
         res.json({
           status: true,
           message: "User Deleted from DB",
@@ -139,6 +147,6 @@ export const memberDeleted = async (req: Request, res: Response) => {
       });
     });
   } catch (error) {
-    throw new AppError(error.message, 500);
+    return next(new AppError(error.message, 500));
   }
 };
