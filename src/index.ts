@@ -1,7 +1,7 @@
 import * as express from "express";
 import { config } from "dotenv";
 import * as cors from "cors";
-import routes from "./routes.js";
+import { authRouter, userRouter, webhookRouter } from "./routes/index";
 
 // importing error handlers
 // import { notFound, errorHandler } from "./middleware/error.js";
@@ -11,10 +11,12 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
-app.use("/api", routes);
+app.use("/api/auth", authRouter);
+app.use("/api/user", userRouter);
+app.use("/api/webhook", webhookRouter);
 
 // test endpoint
-app.get("/", (req, res) => {
+app.get("/*", (req, res) => {
   res.send("API is running\n");
 });
 

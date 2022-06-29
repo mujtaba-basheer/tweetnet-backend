@@ -22,5 +22,5 @@ router.post("/retweet", user_1.retweetTweet);
 // reply
 router.post("/reply", user_1.replyToTweet);
 // webhook
-router.post("/webhook", webhook_1.testWebhook);
+router.post("/webhook", webhook_1.memberAdded);
 exports["default"] = router;

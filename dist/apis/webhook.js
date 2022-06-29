@@ -36,7 +36,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.testWebhook = void 0;
+exports.memberDeleted = exports.memberAdded = void 0;
+var app_error_1 = require("../utils/app-error");
 var AWS = require("aws-sdk");
 var credentials = new AWS.Credentials({
     accessKeyId: process.env.DYNAMODB_ACCESS_KEY_ID,
@@ -47,13 +48,97 @@ var dynamodb = new AWS.DynamoDB({
     endpoint: "dynamodb.ap-south-1.amazonaws.com",
     credentials: credentials
 });
-var testWebhook = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var user;
+var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var user, id, email, membership, profile, created_at, params;
     return __generator(this, function (_a) {
-        user = req.body;
-        console.log(JSON.stringify(user));
-        res.json(req.body);
+        try {
+            user = req.body;
+            id = user.id, email = user.email, membership = user.membership, profile = user.profile, created_at = user.created_at;
+            params = {
+                Item: {
+                    id: { S: id },
+                    email: { S: email },
+                    profile: {
+                        M: {
+                            usernames: {
+                                L: [{ S: profile["twitter-handle"] }]
+                            }
+                        }
+                    },
+                    membership: {
+                        M: {
+                            id: {
+                                S: membership.id
+                            },
+                            staus: {
+                                S: membership.status
+                            },
+                            subscribed_to: {
+                                S: membership.subscribed_to
+                            }
+                        }
+                    },
+                    stats: {
+                        M: {
+                            like: {
+                                M: {
+                                    count: { N: "0" },
+                                    last_posted: { S: "" }
+                                }
+                            },
+                            retweet: {
+                                M: {
+                                    count: { N: "0" },
+                                    last_posted: { S: "" }
+                                }
+                            },
+                            reply: {
+                                M: {
+                                    count: { N: "0" },
+                                    last_posted: { S: "" }
+                                }
+                            }
+                        }
+                    },
+                    created_at: { S: created_at }
+                },
+                TableName: "Users"
+            };
+            dynamodb.putItem(params, function (err, data) {
+                if (err)
+                    throw new app_error_1["default"](err.message, 503);
+                res.json({
+                    status: true,
+                    message: "User Added to DB"
+                });
+            });
+        }
+        catch (error) {
+            throw new app_error_1["default"](error.message, 500);
+        }
         return [2 /*return*/];
     });
 }); };
-exports.testWebhook = testWebhook;
+exports.memberAdded = memberAdded;
+var memberDeleted = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var data;
+    return __generator(this, function (_a) {
+        try {
+            data = req.body;
+            console.log(JSON.stringify(data));
+            res.json(data);
+            // dynamodb.putItem(params, (err, data) => {
+            //   if (err) throw new AppError(err.message, 503);
+            //   res.json({
+            //     status: true,
+            //     message: "User Added to DB",
+            //   });
+            // });
+        }
+        catch (error) {
+            throw new app_error_1["default"](error.message, 500);
+        }
+        return [2 /*return*/];
+    });
+}); };
+exports.memberDeleted = memberDeleted;
