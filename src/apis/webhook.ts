@@ -10,6 +10,7 @@ const dynamodb = new AWS.DynamoDB({
   apiVersion: "2012-08-10",
   endpoint: "dynamodb.ap-south-1.amazonaws.com",
   credentials,
+  region: "ap-south-1",
 });
 
 type User = {
@@ -118,18 +119,21 @@ export const memberDeleted = async (req: Request, res: Response) => {
 
     const { email } = data;
 
-    const params: AWS.DynamoDB.DeleteItemInput = {
+    const params: AWS.DynamoDB.GetItemInput | AWS.DynamoDB.DeleteItemInput = {
       Key: {
         email: { S: email },
       },
       TableName: "Users",
     };
 
-    dynamodb.deleteItem(params, (err, data) => {
+    dynamodb.getItem(params, (err, data) => {
       if (err) throw new AppError(err.message, 503);
-      res.json({
-        status: true,
-        message: "User Deleted from DB",
+      dynamodb.deleteItem(params, (err, data) => {
+        if (err) throw new AppError(err.message, 503);
+        res.json({
+          status: true,
+          message: "User Deleted from DB",
+        });
       });
     });
   } catch (error) {

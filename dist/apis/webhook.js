@@ -46,7 +46,8 @@ var credentials = new AWS.Credentials({
 var dynamodb = new AWS.DynamoDB({
     apiVersion: "2012-08-10",
     endpoint: "dynamodb.ap-south-1.amazonaws.com",
-    credentials: credentials
+    credentials: credentials,
+    region: "ap-south-1"
 });
 var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var user, id, email, membership, profile, created_at, params;
@@ -121,23 +122,27 @@ var memberAdded = function (req, res) { return __awaiter(void 0, void 0, void 0,
 }); };
 exports.memberAdded = memberAdded;
 var memberDeleted = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var data, email, params;
+    var data, email, params_1;
     return __generator(this, function (_a) {
         try {
             data = req.body;
             email = data.email;
-            params = {
+            params_1 = {
                 Key: {
                     email: { S: email }
                 },
                 TableName: "Users"
             };
-            dynamodb.deleteItem(params, function (err, data) {
+            dynamodb.getItem(params_1, function (err, data) {
                 if (err)
                     throw new app_error_1["default"](err.message, 503);
-                res.json({
-                    status: true,
-                    message: "User Deleted from DB"
+                dynamodb.deleteItem(params_1, function (err, data) {
+                    if (err)
+                        throw new app_error_1["default"](err.message, 503);
+                    res.json({
+                        status: true,
+                        message: "User Deleted from DB"
+                    });
                 });
             });
         }
