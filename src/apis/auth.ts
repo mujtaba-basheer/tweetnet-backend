@@ -50,7 +50,9 @@ export const getToken = catchAsync(
         mid?: { S: string };
         profile: {
           M: {
-            usernames: { S: string }[];
+            usernames: {
+              L: { S: string }[];
+            };
           };
         };
       };
