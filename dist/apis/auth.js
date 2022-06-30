@@ -44,27 +44,6 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
         const { code, mid } = req.body;
         const token = await (0, auth_1.createToken)(code);
         const t_user = await (0, user_1.getUserDetails)(token.access_token);
-        // function to update mid and chang id
-        const updateUserId = () => {
-            return new Promise((resolve, rej) => {
-                const updateUserParams = {
-                    Key: {
-                        id: { S: mid },
-                    },
-                    UpdateExpression: `SET tid=:tid`,
-                    ExpressionAttributeValues: {
-                        ":tid": { S: t_user.data.id },
-                    },
-                    TableName: "Users",
-                };
-                dynamodb.updateItem(updateUserParams, (err) => {
-                    if (err)
-                        rej(new Error(err.message));
-                    else
-                        resolve(null);
-                });
-            });
-        };
         // getting user from db
         const getUserParams = {
             Key: {
@@ -78,25 +57,16 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
             const user = data.Item;
             if (user) {
                 const { profile: { M: { usernames }, }, } = user;
-                try {
-                    // checking for valid usernames
-                    const current_username = t_user.data.username;
-                    if (usernames.L.map((x) => x.S).includes(current_username)) {
-                        // swapping id and mid if required
-                        if (!user.tid) {
-                            await updateUserId();
-                        }
-                        res.json({
-                            status: true,
-                            data: token,
-                        });
-                    }
-                    else
-                        return next(new app_error_1.default("Twitter handle not found", 404));
+                // checking for valid usernames
+                const current_username = t_user.data.username;
+                if (usernames.L.map((x) => x.S).includes(current_username)) {
+                    res.json({
+                        status: true,
+                        data: token,
+                    });
                 }
-                catch (error) {
-                    return next(new app_error_1.default(error.message, 503));
-                }
+                else
+                    return next(new app_error_1.default("Twitter handle not found", 404));
             }
             else
                 return next(new app_error_1.default("User not found", 404));

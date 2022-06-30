@@ -61,26 +61,6 @@ export const getToken = catchAsync(
       const token = await createToken(code);
       const t_user = await getUserDetails(token.access_token);
 
-      // function to update mid and chang id
-      const updateUserId: () => Promise<null> = () => {
-        return new Promise((resolve, rej) => {
-          const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
-            Key: {
-              id: { S: mid },
-            },
-            UpdateExpression: `SET tid=:tid`,
-            ExpressionAttributeValues: {
-              ":tid": { S: t_user.data.id },
-            },
-            TableName: "Users",
-          };
-          dynamodb.updateItem(updateUserParams, (err) => {
-            if (err) rej(new Error(err.message));
-            else resolve(null);
-          });
-        });
-      };
-
       // getting user from db
       const getUserParams: AWS.DynamoDB.GetItemInput = {
         Key: {
@@ -100,23 +80,14 @@ export const getToken = catchAsync(
             },
           } = user;
 
-          try {
-            // checking for valid usernames
-            const current_username = t_user.data.username;
-            if (usernames.L.map((x) => x.S).includes(current_username)) {
-              // swapping id and mid if required
-              if (!user.tid) {
-                await updateUserId();
-              }
-
-              res.json({
-                status: true,
-                data: token,
-              });
-            } else return next(new AppError("Twitter handle not found", 404));
-          } catch (error) {
-            return next(new AppError(error.message, 503));
-          }
+          // checking for valid usernames
+          const current_username = t_user.data.username;
+          if (usernames.L.map((x) => x.S).includes(current_username)) {
+            res.json({
+              status: true,
+              data: token,
+            });
+          } else return next(new AppError("Twitter handle not found", 404));
         } else return next(new AppError("User not found", 404));
       });
     } catch (error) {
