@@ -55,9 +55,7 @@ export const getToken = catchAsync(
 
       const { code, mid } = req.body;
       const token = await createToken(code);
-      console.log({ token });
       const t_user = await getUserDetails(token.access_token);
-      console.log(JSON.stringify(t_user));
 
       // function to update mid and chang id
       const updateUserId: () => Promise<null> = () => {
@@ -80,7 +78,9 @@ export const getToken = catchAsync(
 
       // getting user from db
       const getUserParams: AWS.DynamoDB.GetItemInput = {
-        Key: mid,
+        Key: {
+          id: { S: mid },
+        },
         TableName: "Users",
       };
 

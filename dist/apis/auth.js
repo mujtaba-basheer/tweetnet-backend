@@ -43,9 +43,7 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const { code, mid } = req.body;
         const token = await (0, auth_1.createToken)(code);
-        console.log({ token });
         const t_user = await (0, user_1.getUserDetails)(token.access_token);
-        console.log(JSON.stringify(t_user));
         // function to update mid and chang id
         const updateUserId = () => {
             return new Promise((resolve, rej) => {
@@ -68,7 +66,9 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
         };
         // getting user from db
         const getUserParams = {
-            Key: mid,
+            Key: {
+                id: { S: mid },
+            },
             TableName: "Users",
         };
         dynamodb.getItem(getUserParams, async (err, data) => {
