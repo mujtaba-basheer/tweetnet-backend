@@ -102,10 +102,10 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const { ids, task } = req.body;
         if (["like", "retweet", "reply"].includes(task)) {
-            const user_id = req.user.data.id;
+            const { id, mid } = req.user.data;
             // getting user object from DB
             const getUserParams = {
-                Key: { id: { S: user_id } },
+                Key: { id: { S: mid } },
                 TableName: "Users",
             };
             dynamodb.getItem(getUserParams, (err, data) => {
@@ -113,7 +113,6 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                     console.log(err);
                     return next(new app_error_1.default(err.message, 503));
                 }
-                console.log(data, user_id);
                 const user = data.Item;
                 let { count, last_posted } = user.stats[task];
                 const sid = user.membership.subscribed_to;
@@ -148,7 +147,7 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                                         Item: {
                                             id: { S: id },
                                             task: { S: task },
-                                            created_by: { S: user_id },
+                                            created_by: { S: mid },
                                             acted_by: { L: [] },
                                             created_at: { S: created_at.toISOString() },
                                         },
@@ -161,7 +160,7 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                                 return next(new app_error_1.default(err.message, 503));
                             // updating user data in DB
                             const updateUserParams = {
-                                Key: { user_id: { S: user_id } },
+                                Key: { id: { S: mid } },
                                 UpdateExpression: `SET stats.${task}.count = :c, stats.${task}.last_posted = :l_p`,
                                 ExpressionAttributeValues: {
                                     ":c": {

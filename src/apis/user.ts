@@ -19,6 +19,16 @@ const dynamodb = new AWS.DynamoDB({
   region: "ap-south-1",
 });
 
+type UserInfo = {
+  data: {
+    id: string;
+    name: string;
+    username: string;
+    mid: string;
+  };
+  title?: string;
+};
+
 type AuthorDetail = {
   id: string;
   profile_image_url: string;
@@ -94,7 +104,11 @@ export const getFollows = async (req: Request, res: Response) => {
 };
 
 export const getMyTweets = catchAsync(
-  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
+  async (
+    req: Request & { user: UserInfo },
+    res: Response,
+    next: NextFunction
+  ) => {
     const token = req.headers.authorization as string;
     const user_id = req.user.data.id;
 
@@ -161,7 +175,11 @@ export const getMyTweets = catchAsync(
 );
 
 export const forwardTweets = catchAsync(
-  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
+  async (
+    req: Request & { user: UserInfo },
+    res: Response,
+    next: NextFunction
+  ) => {
     type ForwardTweets = {
       ids: string[];
       task: "like" | "retweet" | "reply";
@@ -194,11 +212,11 @@ export const forwardTweets = catchAsync(
     try {
       const { ids, task } = req.body as ForwardTweets;
       if (["like", "retweet", "reply"].includes(task)) {
-        const user_id = req.user.data.id;
+        const { id, mid } = req.user.data;
 
         // getting user object from DB
         const getUserParams: AWS.DynamoDB.GetItemInput = {
-          Key: { id: { S: user_id } },
+          Key: { id: { S: mid } },
           TableName: "Users",
         };
         dynamodb.getItem(getUserParams, (err, data) => {
@@ -206,7 +224,6 @@ export const forwardTweets = catchAsync(
             console.log(err);
             return next(new AppError(err.message, 503));
           }
-          console.log(data, user_id);
 
           const user = data.Item as User;
           let { count, last_posted } = user.stats[task];
@@ -240,7 +257,7 @@ export const forwardTweets = catchAsync(
                       Item: {
                         id: { S: id },
                         task: { S: task },
-                        created_by: { S: user_id },
+                        created_by: { S: mid },
                         acted_by: { L: [] },
                         created_at: { S: created_at.toISOString() },
                       },
@@ -254,7 +271,7 @@ export const forwardTweets = catchAsync(
 
                 // updating user data in DB
                 const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
-                  Key: { user_id: { S: user_id } },
+                  Key: { id: { S: mid } },
                   UpdateExpression: `SET stats.${task}.count = :c, stats.${task}.last_posted = :l_p`,
                   ExpressionAttributeValues: {
                     ":c": {
