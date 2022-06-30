@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from "express";
-import { getUserByUsername } from "../utils/user";
 import AppError from "../utils/app-error";
 import { config } from "dotenv";
 import * as AWS from "aws-sdk";
@@ -52,17 +51,15 @@ export const memberAdded = async (
     const user = req.body as User;
 
     const { id, email, membership, profile, created_at } = user;
-    const t_user = await getUserByUsername(user.profile["twitter-handle"]);
     const last_posted = new Date().toISOString();
     const params: AWS.DynamoDB.PutItemInput = {
       Item: {
-        id: { S: t_user.data.id },
-        mid: { S: id },
+        id: { S: id },
         email: { S: email },
         profile: {
           M: {
             usernames: {
-              L: [{ S: profile["twitter-handle"] }],
+              L: [{ S: profile["twitter-handle"].substring(1) }],
             },
           },
         },

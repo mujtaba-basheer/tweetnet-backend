@@ -1,7 +1,9 @@
 import * as crypto from "crypto";
 import * as https from "https";
+import { config } from "dotenv";
 import rs = require("randomstring");
 import base64url from "base64url";
+config();
 
 const store = {
   code_verifier: "",
@@ -58,14 +60,9 @@ export const getAuthorizationParamsString = async (scope: string[]) => {
   return attrs.join("&");
 };
 
-export const createAppToken: () => string = () => {
-  const ck = process.env.API_KEY;
-  const cs = process.env.API_KEY_SECRET;
-
-  return Buffer.from(`${ck}:${cs}`).toString("base64");
-};
-
-export const createToken = (code: string) => {
+export const createToken: (
+  code: string
+) => Promise<{ access_token: string }> = (code: string) => {
   return new Promise((res, rej) => {
     const request = https.request(
       "https://api.twitter.com/2/oauth2/token",

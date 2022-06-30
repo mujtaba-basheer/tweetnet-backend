@@ -1,6 +1,5 @@
 import * as https from "https";
 import AppError from "./app-error";
-import { createAppToken } from "./auth";
 
 type UserInfo = {
   data: {
@@ -8,37 +7,6 @@ type UserInfo = {
     name: string;
     username: string;
   };
-};
-
-export const getUserByUsername: (username: string) => Promise<UserInfo> = (
-  username: string
-) => {
-  return new Promise((res, rej) => {
-    const token: string = createAppToken();
-
-    const request = https.request(
-      `https://api.twitter.com/2/users/by/username/${username}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-      (resp) => {
-        let data = "";
-        resp.on("data", (chunk) => {
-          data += chunk.toString();
-        });
-        resp.on("close", () => {
-          const user = JSON.parse(data);
-          if (resp.statusCode === 200) res(user);
-          else rej(new AppError(user.title, resp.statusCode));
-        });
-        resp.on("error", (err) => rej(err));
-      }
-    );
-    request.end();
-  });
 };
 
 export const getUserDetails: (token: string) => Promise<UserInfo> = (

@@ -1,9 +1,9 @@
 "use strict";
-exports.__esModule = true;
-var express_1 = require("express");
-var user_1 = require("../apis/user");
-var auth_1 = require("../middleware/auth");
-var userRouter = (0, express_1.Router)();
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const user_1 = require("../apis/user");
+const auth_1 = require("../middleware/auth");
+const userRouter = (0, express_1.Router)();
 // follows
 userRouter.get("/follows", user_1.getFollows);
 // my tweets
@@ -16,4 +16,4 @@ userRouter.post("/like", user_1.likeTweet);
 userRouter.post("/retweet", user_1.retweetTweet);
 // reply
 userRouter.post("/reply", user_1.replyToTweet);
-exports["default"] = userRouter;
+exports.default = userRouter;

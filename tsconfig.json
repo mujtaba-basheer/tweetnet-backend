@@ -3,6 +3,8 @@
   "exclude": ["node_modules"],
   "compilerOptions": {
     "outDir": "dist",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "target": "ES2017",
+    "module": "CommonJS"
   }
 }
