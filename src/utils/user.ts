@@ -27,6 +27,7 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
           data += chunk.toString();
         });
         resp.on("close", () => {
+          console.log(data);
           const user = JSON.parse(data);
           if (resp.statusCode === 200) res(user);
           else rej(new AppError(user.title, resp.statusCode));
