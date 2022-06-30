@@ -97,19 +97,19 @@ export const getToken = catchAsync(
           try {
             if (!user.mid) {
               await updateUserId();
+
+              // checking for valid usernames
+              const current_username = t_user.data.username;
+              if (usernames.includes(current_username)) {
+                res.json({
+                  status: true,
+                  data: token,
+                });
+              } else return next(new AppError("Twitter handle not found", 404));
             }
           } catch (error) {
             return next(new AppError(error.message, 503));
           }
-
-          // checking for valid usernames
-          const current_username = t_user.data.username;
-          if (usernames.includes(current_username)) {
-            res.json({
-              status: true,
-              data: token,
-            });
-          } else return next(new AppError("Twitter handle not found", 404));
         } else return next(new AppError("User not found", 404));
       });
     } catch (error) {
