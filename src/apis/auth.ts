@@ -88,6 +88,25 @@ export const getUsers = catchAsync(
         TableName: "Users",
       };
 
+      // function to update mid and chang id
+      const updateUserId: () => Promise<null> = () => {
+        return new Promise((res, rej) => {
+          const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
+            Key: mid,
+            UpdateExpression: `return next(new AppError("Error Updating details", 501))SET mid=:mid, id=:id`,
+            ExpressionAttributeValues: {
+              ":mid": { S: mid },
+              ":id": { S: t_user.data.id },
+            },
+            TableName: "Users",
+          };
+          dynamodb.updateItem(updateUserParams, (err) => {
+            if (err) rej(new Error(err.message));
+            else res(null);
+          });
+        });
+      };
+
       dynamodb.getItem(getUserParams, async (err, data) => {
         if (err) return next(new AppError(err.message, 503));
         const user = data.Item as User;
@@ -99,19 +118,12 @@ export const getUsers = catchAsync(
           } = user;
 
           // swapping id and mid if required
-          if (!user.mid) {
-            const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
-              Key: mid,
-              UpdateExpression: `SET mid=:mid, id=:id`,
-              ExpressionAttributeValues: {
-                ":mid": { S: mid },
-                ":id": { S: t_user.data.id },
-              },
-              TableName: "Users",
-            };
-            dynamodb.updateItem(updateUserParams, (err) => {
-              if (err) return next(new AppError("Error Updating details", 501));
-            });
+          try {
+            if (!user.mid) {
+              await updateUserId();
+            }
+          } catch (error) {
+            return next(new AppError(error.message, 503));
           }
 
           // checking for valid usernames
