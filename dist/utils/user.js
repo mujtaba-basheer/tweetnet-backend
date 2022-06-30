@@ -16,6 +16,7 @@ const getUserDetails = (token) => {
                 data += chunk.toString();
             });
             resp.on("close", () => {
+                console.log(data);
                 const user = JSON.parse(data);
                 if (resp.statusCode === 200)
                     res(user);
