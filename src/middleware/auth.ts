@@ -10,8 +10,8 @@ export const protect = catchAsync(
       if (bearerToken && bearerToken.startsWith("Bearer ")) {
         const unparsed_token = bearerToken.split(" ")[1];
         const i = unparsed_token.indexOf("K2a");
-        const token = unparsed_token.substring(0, i);
-        const id = unparsed_token.slice(i + 3, -4);
+        const id = unparsed_token.substring(0, i);
+        const token = unparsed_token.slice(i + 3, -4);
         req.headers.authorization = token;
         const user = await getUserDetails(token);
         user.data.mid = id;
