@@ -65,7 +65,9 @@ export const getToken = catchAsync(
       const updateUserId: () => Promise<null> = () => {
         return new Promise((resolve, rej) => {
           const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
-            Key: mid,
+            Key: {
+              id: { S: mid },
+            },
             UpdateExpression: `SET mid=:mid, id=:id`,
             ExpressionAttributeValues: {
               ":mid": { S: mid },
@@ -91,7 +93,6 @@ export const getToken = catchAsync(
       dynamodb.getItem(getUserParams, async (err, data) => {
         if (err) return next(new AppError(err.message, 503));
         const user = data.Item as User;
-        console.log(user);
 
         if (user) {
           const {
@@ -108,7 +109,7 @@ export const getToken = catchAsync(
 
             // checking for valid usernames
             const current_username = t_user.data.username;
-            if (usernames.map((x) => x.S).includes(current_username)) {
+            if (usernames.L.map((x) => x.S).includes(current_username)) {
               res.json({
                 status: true,
                 data: token,
