@@ -61,7 +61,7 @@ export const getToken = catchAsync(
 
       // function to update mid and chang id
       const updateUserId: () => Promise<null> = () => {
-        return new Promise((res, rej) => {
+        return new Promise((resolve, rej) => {
           const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
             Key: mid,
             UpdateExpression: `return next(new AppError("Error Updating details", 501))SET mid=:mid, id=:id`,
@@ -73,7 +73,7 @@ export const getToken = catchAsync(
           };
           dynamodb.updateItem(updateUserParams, (err) => {
             if (err) rej(new Error(err.message));
-            else res(null);
+            else resolve(null);
           });
         });
       };
