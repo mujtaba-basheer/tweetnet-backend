@@ -85,7 +85,10 @@ export const getToken = catchAsync(
           if (usernames.L.map((x) => x.S).includes(current_username)) {
             res.json({
               status: true,
-              data: token,
+              data: {
+                ...token,
+                access_token: `${mid}K2a${token.access_token}3a1G`,
+              },
             });
           } else return next(new AppError("Twitter handle not found", 404));
         } else return next(new AppError("User not found", 404));

@@ -62,7 +62,7 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
                 if (usernames.L.map((x) => x.S).includes(current_username)) {
                     res.json({
                         status: true,
-                        data: token,
+                        data: Object.assign(Object.assign({}, token), { access_token: `${mid}K2a${token.access_token}3a1G` }),
                     });
                 }
                 else
