@@ -113,7 +113,7 @@ export const getToken = catchAsync(
         } else return next(new AppError("User not found", 404));
       });
     } catch (error) {
-      return new AppError(error.message, 501);
+      return next(new AppError(error.message, 501));
     }
   }
 );
