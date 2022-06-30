@@ -83,6 +83,7 @@ exports.getToken = (0, catch_async_1["default"])(function (req, res) { return __
             case 1:
                 token = _a.sent();
                 // TODO: Get username from token, and check if it's valid
+                // getting user from db
                 res.json({ status: true, data: token });
                 return [3 /*break*/, 3];
             case 2:

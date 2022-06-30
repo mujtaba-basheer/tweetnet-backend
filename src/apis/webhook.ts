@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
+import { getUserByUsername } from "../utils/user";
 import AppError from "../utils/app-error";
+import { config } from "dotenv";
 import * as AWS from "aws-sdk";
+config();
 
 const credentials = new AWS.Credentials({
   accessKeyId: process.env.DYNAMODB_ACCESS_KEY_ID,
@@ -49,9 +52,12 @@ export const memberAdded = async (
     const user = req.body as User;
 
     const { id, email, membership, profile, created_at } = user;
+    const t_user = await getUserByUsername(user.profile["twitter-handle"]);
+    const last_posted = new Date().toISOString();
     const params: AWS.DynamoDB.PutItemInput = {
       Item: {
-        id: { S: id },
+        id: { S: t_user.data.id },
+        mid: { S: id },
         email: { S: email },
         profile: {
           M: {
@@ -78,19 +84,19 @@ export const memberAdded = async (
             like: {
               M: {
                 count: { N: "0" },
-                last_posted: { S: "" },
+                last_posted: { S: last_posted },
               },
             },
             retweet: {
               M: {
                 count: { N: "0" },
-                last_posted: { S: "" },
+                last_posted: { S: last_posted },
               },
             },
             reply: {
               M: {
                 count: { N: "0" },
-                last_posted: { S: "" },
+                last_posted: { S: last_posted },
               },
             },
           },

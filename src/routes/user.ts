@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  forwardTweets,
   getFollows,
   getMyTweets,
   likeTweet,
@@ -13,8 +14,11 @@ const userRouter = Router();
 // follows
 userRouter.get("/follows", getFollows);
 
-// tweets
+// my tweets
 userRouter.get("/my-tweets", protect, getMyTweets);
+
+// forward tweets
+userRouter.post("/forward-tweets", protect, forwardTweets);
 
 // like
 userRouter.post("/like", likeTweet);

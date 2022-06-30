@@ -36,11 +36,25 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.replyToTweet = exports.retweetTweet = exports.likeTweet = exports.getTweets = exports.getMyTweets = exports.getFollows = void 0;
+exports.replyToTweet = exports.retweetTweet = exports.likeTweet = exports.getTweets = exports.forwardTweets = exports.getMyTweets = exports.getFollows = void 0;
+var dotenv_1 = require("dotenv");
 var https = require("https");
 var app_error_1 = require("../utils/app-error");
 var catch_async_1 = require("../utils/catch-async");
 var user_1 = require("../utils/user");
+var AWS = require("aws-sdk");
+var subscription_1 = require("../data/subscription");
+(0, dotenv_1.config)();
+var credentials = new AWS.Credentials({
+    accessKeyId: process.env.DYNAMODB_ACCESS_KEY_ID,
+    secretAccessKey: process.env.DYNAMODB_ACCESS_KEY_SECRET
+});
+var dynamodb = new AWS.DynamoDB({
+    apiVersion: "2012-08-10",
+    endpoint: "dynamodb.ap-south-1.amazonaws.com",
+    credentials: credentials,
+    region: "ap-south-1"
+});
 var getFollows = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var token, user_id, request;
     return __generator(this, function (_a) {
@@ -142,6 +156,109 @@ exports.getMyTweets = (0, catch_async_1["default"])(function (req, res, next) { 
             });
         });
         request.end();
+        return [2 /*return*/];
+    });
+}); });
+exports.forwardTweets = (0, catch_async_1["default"])(function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a, ids_1, task_1, user_id_1, getUserParams;
+    return __generator(this, function (_b) {
+        try {
+            _a = req.body, ids_1 = _a.ids, task_1 = _a.task;
+            if (["like", "retweet", "reply"].includes(task_1)) {
+                user_id_1 = req.user.data.id;
+                getUserParams = {
+                    Key: { id: { S: user_id_1 } },
+                    TableName: "Users"
+                };
+                dynamodb.getItem(getUserParams, function (err, data) {
+                    if (err) {
+                        console.log(err);
+                        return next(new app_error_1["default"](err.message, 503));
+                    }
+                    console.log(data, user_id_1);
+                    var user = data.Item;
+                    var _a = user.stats[task_1], count = _a.count, last_posted = _a.last_posted;
+                    var sid = user.membership.subscribed_to;
+                    var n = ids_1.length;
+                    var limit_o = subscription_1["default"].find(function (x) { return x.sid === sid; });
+                    // checking daily limits
+                    if (limit_o) {
+                        var limit = limit_o.limit[task_1];
+                        var created_at_1 = new Date();
+                        var created_at_date = created_at_1.toISOString().substring(0, 10);
+                        var last_posted_date = last_posted.substring(0, 10);
+                        try {
+                            if (last_posted_date < created_at_date) {
+                                if (n <= limit) {
+                                    count = n;
+                                    last_posted = created_at_1.toISOString();
+                                }
+                                else
+                                    throw new Error("Limit Exceeded");
+                            }
+                            else if (n + count <= limit) {
+                                last_posted = created_at_1.toISOString();
+                                count += n;
+                            }
+                            else
+                                throw new Error("Limit Exceeded");
+                            // adding tweets to DB
+                            var putTweetsParams = {
+                                RequestItems: {
+                                    Tweets: ids_1.map(function (id) { return ({
+                                        PutRequest: {
+                                            Item: {
+                                                id: { S: id },
+                                                task: { S: task_1 },
+                                                created_by: { S: user_id_1 },
+                                                acted_by: { L: [] },
+                                                created_at: { S: created_at_1.toISOString() }
+                                            }
+                                        }
+                                    }); })
+                                }
+                            };
+                            dynamodb.batchWriteItem(putTweetsParams, function (err, data) {
+                                if (err)
+                                    return next(new app_error_1["default"](err.message, 503));
+                                // updating user data in DB
+                                var updateUserParams = {
+                                    Key: { user_id: { S: user_id_1 } },
+                                    UpdateExpression: "SET stats.".concat(task_1, ".count = :c, stats.").concat(task_1, ".last_posted = :l_p"),
+                                    ExpressionAttributeValues: {
+                                        ":c": {
+                                            N: count + ""
+                                        },
+                                        ":l_p": {
+                                            S: last_posted
+                                        }
+                                    },
+                                    TableName: "Users"
+                                };
+                                dynamodb.updateItem(updateUserParams, function (err, data) {
+                                    if (err)
+                                        return next(new app_error_1["default"](err.message, 503));
+                                    res.json({
+                                        status: true,
+                                        message: "Tweets forwarded successfully"
+                                    });
+                                });
+                            });
+                        }
+                        catch (error) {
+                            return next(new app_error_1["default"](error.message, 400));
+                        }
+                    }
+                    else
+                        return next(new app_error_1["default"]("Subscription not found", 404));
+                });
+            }
+            else
+                return [2 /*return*/, next(new app_error_1["default"]("Bad Request", 400))];
+        }
+        catch (error) {
+            return [2 /*return*/, next(new app_error_1["default"](error.message, 501))];
+        }
         return [2 /*return*/];
     });
 }); });

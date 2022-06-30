@@ -34,6 +34,8 @@ export const getToken = catchAsync(async (req: Request, res: Response) => {
 
     // TODO: Get username from token, and check if it's valid
 
+    // getting user from db
+
     res.json({ status: true, data: token });
   } catch (error) {
     return new AppError(error.message, 501);

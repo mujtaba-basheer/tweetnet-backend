@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.createToken = exports.getAuthorizationParamsString = void 0;
+exports.createToken = exports.createAppToken = exports.getAuthorizationParamsString = void 0;
 var crypto = require("crypto");
 var https = require("https");
 var rs = require("randomstring");
@@ -99,8 +99,13 @@ var getAuthorizationParamsString = function (scope) { return __awaiter(void 0, v
     });
 }); };
 exports.getAuthorizationParamsString = getAuthorizationParamsString;
+var createAppToken = function () {
+    var ck = process.env.API_KEY;
+    var cs = process.env.API_KEY_SECRET;
+    return Buffer.from("".concat(ck, ":").concat(cs)).toString("base64");
+};
+exports.createAppToken = createAppToken;
 var createToken = function (code) {
-    console.log({ code_verifier: store.code_verifier });
     return new Promise(function (res, rej) {
         var request = https.request("https://api.twitter.com/2/oauth2/token", {
             method: "POST",

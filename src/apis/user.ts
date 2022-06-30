@@ -1,8 +1,23 @@
 import { NextFunction, Request, Response } from "express";
+import { config } from "dotenv";
 import * as https from "https";
 import AppError from "../utils/app-error";
 import catchAsync from "../utils/catch-async";
 import { getUserDetails } from "../utils/user";
+import * as AWS from "aws-sdk";
+import limits from "../data/subscription";
+config();
+
+const credentials = new AWS.Credentials({
+  accessKeyId: process.env.DYNAMODB_ACCESS_KEY_ID,
+  secretAccessKey: process.env.DYNAMODB_ACCESS_KEY_SECRET,
+});
+const dynamodb = new AWS.DynamoDB({
+  apiVersion: "2012-08-10",
+  endpoint: "dynamodb.ap-south-1.amazonaws.com",
+  credentials,
+  region: "ap-south-1",
+});
 
 type AuthorDetail = {
   id: string;
@@ -142,6 +157,132 @@ export const getMyTweets = catchAsync(
       }
     );
     request.end();
+  }
+);
+
+export const forwardTweets = catchAsync(
+  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
+    type ForwardTweets = {
+      ids: string[];
+      task: "like" | "retweet" | "reply";
+    };
+    type User = {
+      email: string;
+      id: string;
+      name: string;
+      profile: {
+        usernames: string[];
+      };
+      membership: {
+        id: string;
+        status: string;
+        subscribed_to: string;
+      };
+      stats: {
+        like: Stat;
+        retweet: Stat;
+        reply: Stat;
+      };
+      created_at: string;
+    };
+
+    type Stat = {
+      count: number;
+      last_posted: string;
+    };
+
+    try {
+      const { ids, task } = req.body as ForwardTweets;
+      if (["like", "retweet", "reply"].includes(task)) {
+        const user_id = req.user.data.id;
+
+        // getting user object from DB
+        const getUserParams: AWS.DynamoDB.GetItemInput = {
+          Key: { id: { S: user_id } },
+          TableName: "Users",
+        };
+        dynamodb.getItem(getUserParams, (err, data) => {
+          if (err) {
+            console.log(err);
+            return next(new AppError(err.message, 503));
+          }
+          console.log(data, user_id);
+
+          const user = data.Item as User;
+          let { count, last_posted } = user.stats[task];
+          const sid = user.membership.subscribed_to;
+          const n = ids.length;
+          const limit_o = limits.find((x) => x.sid === sid);
+
+          // checking daily limits
+          if (limit_o) {
+            const limit = limit_o.limit[task];
+            const created_at = new Date();
+            const created_at_date = created_at.toISOString().substring(0, 10);
+            const last_posted_date = last_posted.substring(0, 10);
+
+            try {
+              if (last_posted_date < created_at_date) {
+                if (n <= limit) {
+                  count = n;
+                  last_posted = created_at.toISOString();
+                } else throw new Error("Limit Exceeded");
+              } else if (n + count <= limit) {
+                last_posted = created_at.toISOString();
+                count += n;
+              } else throw new Error("Limit Exceeded");
+
+              // adding tweets to DB
+              const putTweetsParams: AWS.DynamoDB.BatchWriteItemInput = {
+                RequestItems: {
+                  Tweets: ids.map((id) => ({
+                    PutRequest: {
+                      Item: {
+                        id: { S: id },
+                        task: { S: task },
+                        created_by: { S: user_id },
+                        acted_by: { L: [] },
+                        created_at: { S: created_at.toISOString() },
+                      },
+                    },
+                  })),
+                },
+              };
+
+              dynamodb.batchWriteItem(putTweetsParams, (err, data) => {
+                if (err) return next(new AppError(err.message, 503));
+
+                // updating user data in DB
+                const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
+                  Key: { user_id: { S: user_id } },
+                  UpdateExpression: `SET stats.${task}.count = :c, stats.${task}.last_posted = :l_p`,
+                  ExpressionAttributeValues: {
+                    ":c": {
+                      N: count + "",
+                    },
+                    ":l_p": {
+                      S: last_posted,
+                    },
+                  },
+                  TableName: "Users",
+                };
+                dynamodb.updateItem(updateUserParams, (err, data) => {
+                  if (err) return next(new AppError(err.message, 503));
+                  res.json({
+                    status: true,
+                    message: "Tweets forwarded successfully",
+                  });
+                });
+              });
+            } catch (error) {
+              return next(new AppError(error.message, 400));
+            }
+          } else return next(new AppError("Subscription not found", 404));
+        });
+      } else return next(new AppError("Bad Request", 400));
+    } catch (error) {
+      return next(new AppError(error.message, 501));
+    }
   }
 );
 

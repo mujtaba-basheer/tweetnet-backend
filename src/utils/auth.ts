@@ -58,8 +58,14 @@ export const getAuthorizationParamsString = async (scope: string[]) => {
   return attrs.join("&");
 };
 
+export const createAppToken: () => string = () => {
+  const ck = process.env.API_KEY;
+  const cs = process.env.API_KEY_SECRET;
+
+  return Buffer.from(`${ck}:${cs}`).toString("base64");
+};
+
 export const createToken = (code: string) => {
-  console.log({ code_verifier: store.code_verifier });
   return new Promise((res, rej) => {
     const request = https.request(
       "https://api.twitter.com/2/oauth2/token",

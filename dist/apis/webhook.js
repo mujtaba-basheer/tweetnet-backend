@@ -37,8 +37,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 exports.__esModule = true;
 exports.memberDeleted = exports.memberAdded = void 0;
+var user_1 = require("../utils/user");
 var app_error_1 = require("../utils/app-error");
+var dotenv_1 = require("dotenv");
 var AWS = require("aws-sdk");
+(0, dotenv_1.config)();
 var credentials = new AWS.Credentials({
     accessKeyId: process.env.DYNAMODB_ACCESS_KEY_ID,
     secretAccessKey: process.env.DYNAMODB_ACCESS_KEY_SECRET
@@ -50,74 +53,82 @@ var dynamodb = new AWS.DynamoDB({
     region: "ap-south-1"
 });
 var memberAdded = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var user, id, email, membership, profile, created_at, params;
+    var user, id, email, membership, profile, created_at, t_user, last_posted, params, error_1;
     return __generator(this, function (_a) {
-        try {
-            user = req.body;
-            id = user.id, email = user.email, membership = user.membership, profile = user.profile, created_at = user.created_at;
-            params = {
-                Item: {
-                    id: { S: id },
-                    email: { S: email },
-                    profile: {
-                        M: {
-                            usernames: {
-                                L: [{ S: profile["twitter-handle"] }]
-                            }
-                        }
-                    },
-                    membership: {
-                        M: {
-                            id: {
-                                S: membership.id
-                            },
-                            staus: {
-                                S: membership.status
-                            },
-                            subscribed_to: {
-                                S: membership.subscribed_to
-                            }
-                        }
-                    },
-                    stats: {
-                        M: {
-                            like: {
-                                M: {
-                                    count: { N: "0" },
-                                    last_posted: { S: "" }
-                                }
-                            },
-                            retweet: {
-                                M: {
-                                    count: { N: "0" },
-                                    last_posted: { S: "" }
-                                }
-                            },
-                            reply: {
-                                M: {
-                                    count: { N: "0" },
-                                    last_posted: { S: "" }
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                user = req.body;
+                id = user.id, email = user.email, membership = user.membership, profile = user.profile, created_at = user.created_at;
+                return [4 /*yield*/, (0, user_1.getUserByUsername)(user.profile["twitter-handle"])];
+            case 1:
+                t_user = _a.sent();
+                last_posted = new Date().toISOString();
+                params = {
+                    Item: {
+                        id: { S: t_user.data.id },
+                        mid: { S: id },
+                        email: { S: email },
+                        profile: {
+                            M: {
+                                usernames: {
+                                    L: [{ S: profile["twitter-handle"] }]
                                 }
                             }
-                        }
+                        },
+                        membership: {
+                            M: {
+                                id: {
+                                    S: membership.id
+                                },
+                                staus: {
+                                    S: membership.status
+                                },
+                                subscribed_to: {
+                                    S: membership.subscribed_to
+                                }
+                            }
+                        },
+                        stats: {
+                            M: {
+                                like: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted }
+                                    }
+                                },
+                                retweet: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted }
+                                    }
+                                },
+                                reply: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted }
+                                    }
+                                }
+                            }
+                        },
+                        created_at: { S: created_at }
                     },
-                    created_at: { S: created_at }
-                },
-                TableName: "Users"
-            };
-            dynamodb.putItem(params, function (err, data) {
-                if (err)
-                    return next(new app_error_1["default"](err.message, 503));
-                res.json({
-                    status: true,
-                    message: "User Added to DB"
+                    TableName: "Users"
+                };
+                dynamodb.putItem(params, function (err, data) {
+                    if (err)
+                        return next(new app_error_1["default"](err.message, 503));
+                    res.json({
+                        status: true,
+                        message: "User Added to DB"
+                    });
                 });
-            });
+                return [3 /*break*/, 3];
+            case 2:
+                error_1 = _a.sent();
+                throw new app_error_1["default"](error_1.message, 500);
+            case 3: return [2 /*return*/];
         }
-        catch (error) {
-            throw new app_error_1["default"](error.message, 500);
-        }
-        return [2 /*return*/];
     });
 }); };
 exports.memberAdded = memberAdded;
