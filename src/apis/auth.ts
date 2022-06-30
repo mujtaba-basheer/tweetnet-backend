@@ -45,10 +45,17 @@ export const authorizationUrl = catchAsync(
 export const getToken = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      type User = {
+        id: string;
+        mid?: string;
+        profile: {
+          usernames: string[];
+        };
+      };
+
       const { code, mid } = req.body;
       const token = await createToken(code);
-
-      // TODO: Get username from token, and check if it's valid
+      const t_user = await getUserDetails(token.access_token);
 
       // getting user from db
       const getUserParams: AWS.DynamoDB.GetItemInput = {
@@ -56,9 +63,53 @@ export const getToken = catchAsync(
         TableName: "Users",
       };
 
-      dynamodb.getItem(getUserParams, (err, data) => {
+      // function to update mid and chang id
+      const updateUserId: () => Promise<null> = () => {
+        return new Promise((res, rej) => {
+          const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
+            Key: mid,
+            UpdateExpression: `return next(new AppError("Error Updating details", 501))SET mid=:mid, id=:id`,
+            ExpressionAttributeValues: {
+              ":mid": { S: mid },
+              ":id": { S: t_user.data.id },
+            },
+            TableName: "Users",
+          };
+          dynamodb.updateItem(updateUserParams, (err) => {
+            if (err) rej(new Error(err.message));
+            else res(null);
+          });
+        });
+      };
+
+      dynamodb.getItem(getUserParams, async (err, data) => {
         if (err) return next(new AppError(err.message, 503));
-        const user = data.Item;
+        const user = data.Item as User;
+        console.log(JSON.stringify(user));
+
+        if (user) {
+          const {
+            profile: { usernames },
+          } = user;
+
+          // swapping id and mid if required
+          try {
+            if (!user.mid) {
+              await updateUserId();
+            }
+          } catch (error) {
+            return next(new AppError(error.message, 503));
+          }
+
+          // checking for valid usernames
+          const current_username = t_user.data.username;
+          if (usernames.includes(current_username)) {
+            res.json({
+              status: true,
+              data: token,
+            });
+          } else return next(new AppError("Twitter handle not found", 404));
+        } else return next(new AppError("User not found", 404));
       });
 
       res.json({ status: true, data: token });
