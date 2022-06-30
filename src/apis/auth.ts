@@ -91,10 +91,10 @@ export const getUsers = catchAsync(
       dynamodb.getItem(getUserParams, async (err, data) => {
         if (err) return next(new AppError(err.message, 503));
         const user = data.Item as User;
+        console.log(JSON.stringify(user));
 
         if (user) {
           const {
-            id,
             profile: { usernames },
           } = user;
 
