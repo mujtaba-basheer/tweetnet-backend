@@ -101,15 +101,15 @@ export const getToken = catchAsync(
             },
           } = user;
 
-          // swapping id and mid if required
           try {
-            if (!user.mid) {
-              await updateUserId();
-            }
-
             // checking for valid usernames
             const current_username = t_user.data.username;
             if (usernames.L.map((x) => x.S).includes(current_username)) {
+              // swapping id and mid if required
+              if (!user.mid) {
+                await updateUserId();
+              }
+
               res.json({
                 status: true,
                 data: token,
