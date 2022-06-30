@@ -5,7 +5,7 @@ const user_1 = require("../apis/user");
 const auth_1 = require("../middleware/auth");
 const userRouter = (0, express_1.Router)();
 // follows
-userRouter.get("/follows", user_1.getFollows);
+userRouter.get("/follows", auth_1.protect, user_1.getFollows);
 // my tweets
 userRouter.get("/my-tweets", auth_1.protect, user_1.getMyTweets);
 // forward tweets

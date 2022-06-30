@@ -12,7 +12,7 @@ import { protect } from "../middleware/auth";
 const userRouter = Router();
 
 // follows
-userRouter.get("/follows", getFollows);
+userRouter.get("/follows", protect, getFollows);
 
 // my tweets
 userRouter.get("/my-tweets", protect, getMyTweets);
