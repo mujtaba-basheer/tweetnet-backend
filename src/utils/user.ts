@@ -1,4 +1,5 @@
 import * as https from "https";
+import AppError from "./app-error";
 
 type UserInfo = {
   data: {
@@ -25,7 +26,11 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
         resp.on("data", (chunk) => {
           data += chunk.toString();
         });
-        resp.on("close", () => res(JSON.parse(data)));
+        resp.on("close", () => {
+          const user = JSON.parse(data);
+          if (resp.statusCode === 200) res(user);
+          else rej(new AppError(user.title, resp.statusCode));
+        });
         resp.on("error", (err) => rej(err));
       }
     );

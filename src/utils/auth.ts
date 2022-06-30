@@ -14,141 +14,6 @@ const percentEncode = (str: string) => {
   });
 };
 
-// HMAC-SHA1 Encoding, uses jsSHA lib
-const hmac_sha1 = (string: string, secret: string) => {
-  const hmacValue = crypto
-    .createHmac("sha1", secret)
-    .update(string)
-    .digest("base64");
-  return hmacValue;
-};
-
-// Merge two objects
-const mergeObjs = (obj1: object, obj2: object) => {
-  for (const attr of Object.keys(obj2)) {
-    obj1[attr] = obj2[attr];
-  }
-  return obj1;
-};
-
-// Generate Sorted Parameter String for base string params
-const genSortedParamStr = (
-  params: object,
-  key: string,
-  token: string,
-  timestamp: number,
-  nonce: string
-) => {
-  // Merge oauth params & request params to single object
-  let paramObj: object = mergeObjs(
-    {
-      include_entities: "true",
-      oauth_consumer_key: key,
-      oauth_nonce: nonce,
-      oauth_signature_method: "HMAC-SHA1",
-      oauth_timestamp: timestamp,
-      oauth_token: token,
-      oauth_version: "1.0",
-    },
-    params
-  );
-  // Sort alphabetically
-  let paramObjKeys = Object.keys(paramObj);
-  let len = paramObjKeys.length;
-  paramObjKeys.sort();
-  // Interpolate to string with format as key1=val1&key2=val2&...
-  let paramStr = paramObjKeys[0] + "=" + paramObj[paramObjKeys[0]];
-  for (var i = 1; i < len; i++) {
-    paramStr +=
-      "&" +
-      paramObjKeys[i] +
-      "=" +
-      percentEncode(decodeURIComponent(paramObj[paramObjKeys[i]]));
-  }
-  return paramStr;
-};
-
-const oAuthBaseString = (
-  method: string,
-  url: string,
-  params: object,
-  key: string,
-  token: string,
-  timestamp: number,
-  nonce: string
-) => {
-  return (
-    method +
-    "&" +
-    percentEncode(url) +
-    "&" +
-    percentEncode(genSortedParamStr(params, key, token, timestamp, nonce))
-  );
-};
-
-const oAuthSigningKey = (consumer_secret: string, token_secret?: string) => {
-  return percentEncode(consumer_secret) + "&" + token_secret
-    ? percentEncode(token_secret)
-    : "";
-};
-
-const oAuthSignature = (base_string: string, signing_key: string) => {
-  const signature = hmac_sha1(base_string, signing_key);
-  return signature;
-};
-
-export const getAuthorization = (
-  httpMethod: string,
-  baseUrl: string,
-  reqParams: object
-) => {
-  // Get acces keys
-  const consumerKey = process.env.API_KEY,
-    consumerSecret = process.env.API_KEY_SECRET,
-    accessToken = process.env.ACCESS_TOKEN,
-    accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-  // timestamp as unix epoch
-  let timestamp = Math.round(Date.now() / 1000);
-  // nonce as base64 encoded unique random string
-  let nonce = Buffer.from(consumerKey + ":" + timestamp).toString("base64");
-  // generate signature from base string & signing key
-  let baseString = oAuthBaseString(
-    httpMethod,
-    baseUrl,
-    reqParams,
-    consumerKey,
-    accessToken,
-    timestamp,
-    nonce
-  );
-  let signingKey = oAuthSigningKey(
-    consumerSecret,
-    baseUrl.endsWith("request_token") ? "" : accessTokenSecret
-  );
-  let signature = oAuthSignature(baseString, signingKey);
-  // return interpolated string
-  return (
-    "OAuth " +
-    'oauth_consumer_key="' +
-    consumerKey +
-    '", ' +
-    'oauth_nonce="' +
-    nonce +
-    '", ' +
-    'oauth_signature="' +
-    signature +
-    '", ' +
-    'oauth_signature_method="HMAC-SHA1", ' +
-    'oauth_timestamp="' +
-    timestamp +
-    '", ' +
-    'oauth_token="' +
-    accessToken +
-    '", ' +
-    'oauth_version="1.0"'
-  );
-};
-
 const getRadomString: (len: number) => Promise<string> = (len: number) => {
   return new Promise((res, rej) => {
     crypto.randomBytes(len, (err, buff) => {
@@ -194,6 +59,7 @@ export const getAuthorizationParamsString = async (scope: string[]) => {
 };
 
 export const createToken = (code: string) => {
+  console.log({ code_verifier: store.code_verifier });
   return new Promise((res, rej) => {
     const request = https.request(
       "https://api.twitter.com/2/oauth2/token",
@@ -204,12 +70,15 @@ export const createToken = (code: string) => {
         },
       },
       (resp) => {
-        let data = "";
+        let data: any = "";
         resp.on("data", (chunk) => {
           data += chunk.toString();
         });
         resp.on("end", () => {
-          res(JSON.parse(data));
+          data = JSON.parse(data);
+          if (data.error) {
+            rej(new Error(data.error));
+          } else res(data);
         });
         resp.on("error", (err) => {
           console.error(err);

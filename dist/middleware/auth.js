@@ -39,7 +39,8 @@ exports.__esModule = true;
 exports.protect = void 0;
 var user_1 = require("../utils/user");
 var app_error_1 = require("../utils/app-error");
-var protect = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+var catch_async_1 = require("../utils/catch-async");
+exports.protect = (0, catch_async_1["default"])(function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var bearerToken, token, user, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -47,20 +48,20 @@ var protect = function (req, res, next) { return __awaiter(void 0, void 0, void 
                 _a.trys.push([0, 4, , 5]);
                 bearerToken = req.headers.authorization;
                 if (!(bearerToken && bearerToken.startsWith("Bearer "))) return [3 /*break*/, 2];
-                token = bearerToken.split(" ")[0];
+                token = bearerToken.split(" ")[1];
                 req.headers.authorization = token;
                 return [4 /*yield*/, (0, user_1.getUserDetails)(token)];
             case 1:
                 user = _a.sent();
                 req.user = user;
+                next();
                 return [3 /*break*/, 3];
             case 2: throw new Error("Unauthorized");
             case 3: return [3 /*break*/, 5];
             case 4:
                 error_1 = _a.sent();
-                return [2 /*return*/, next(new app_error_1["default"](error_1.message, 401))];
+                return [2 /*return*/, next(new app_error_1["default"](error_1.message, error_1.statusCode || 401))];
             case 5: return [2 /*return*/];
         }
     });
-}); };
-exports.protect = protect;
+}); });

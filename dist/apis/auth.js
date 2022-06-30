@@ -36,34 +36,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getToken = exports.authorizationUrl = exports.requestToken = void 0;
-var https = require("https");
+exports.getToken = exports.authorizationUrl = void 0;
 var auth_1 = require("../utils/auth");
-var requestToken = function (req, res) {
-    var httpMethod = "POST", baseUrl = "https://api.twitter.com/oauth/request_token", reqParams = {
-        oauth_callback: "".concat(process.env.STAGING_LINK, "/api/callback")
-    };
-    var request = https.request("".concat(baseUrl, "?").concat(new URLSearchParams(reqParams).toString()), {
-        method: httpMethod,
-        headers: {
-            Authorization: (0, auth_1.getAuthorization)(httpMethod, baseUrl, {})
-        }
-    }, function (resp) {
-        resp.on("data", function (chunk) {
-            console.log(JSON.stringify(chunk.toString()));
-        });
-        resp.on("error", function (err) {
-            console.error(err);
-        });
-        resp.on("end", function () {
-            console.log("Data fetched!");
-        });
-    });
-    request.end();
-};
-exports.requestToken = requestToken;
-var authorizationUrl = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var baseUrl, scope, qs;
+var app_error_1 = require("../utils/app-error");
+var catch_async_1 = require("../utils/catch-async");
+exports.authorizationUrl = (0, catch_async_1["default"])(function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var baseUrl, scope, qs_1, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -76,31 +54,41 @@ var authorizationUrl = function (req, res) { return __awaiter(void 0, void 0, vo
                     "like.write",
                     "tweet.write",
                 ];
-                return [4 /*yield*/, (0, auth_1.getAuthorizationParamsString)(scope)];
+                _a.label = 1;
             case 1:
-                qs = _a.sent();
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, (0, auth_1.getAuthorizationParamsString)(scope)];
+            case 2:
+                qs_1 = _a.sent();
                 res.json({
                     status: true,
-                    data: baseUrl + "?" + qs
+                    data: baseUrl + "?" + qs_1
                 });
-                return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 3:
+                error_1 = _a.sent();
+                return [2 /*return*/, new app_error_1["default"](error_1.message, 503)];
+            case 4: return [2 /*return*/];
         }
     });
-}); };
-exports.authorizationUrl = authorizationUrl;
-var getToken = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var code, token;
+}); });
+exports.getToken = (0, catch_async_1["default"])(function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var code, token, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
+                _a.trys.push([0, 2, , 3]);
                 code = req.body.code;
                 return [4 /*yield*/, (0, auth_1.createToken)(code)];
             case 1:
                 token = _a.sent();
                 // TODO: Get username from token, and check if it's valid
                 res.json({ status: true, data: { token: token } });
-                return [2 /*return*/];
+                return [3 /*break*/, 3];
+            case 2:
+                error_2 = _a.sent();
+                return [2 /*return*/, new app_error_1["default"](error_2.message, 501)];
+            case 3: return [2 /*return*/];
         }
     });
-}); };
-exports.getToken = getToken;
+}); });

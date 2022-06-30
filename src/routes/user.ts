@@ -6,6 +6,7 @@ import {
   replyToTweet,
   retweetTweet,
 } from "../apis/user";
+import { protect } from "../middleware/auth";
 
 const userRouter = Router();
 
@@ -13,7 +14,7 @@ const userRouter = Router();
 userRouter.get("/follows", getFollows);
 
 // tweets
-userRouter.get("/my-tweets/:id", getMyTweets);
+userRouter.get("/my-tweets", protect, getMyTweets);
 
 // like
 userRouter.post("/like", likeTweet);

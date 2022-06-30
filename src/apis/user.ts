@@ -44,6 +44,7 @@ type TweetsResp = {
     oldest_id: string;
     next_token: string;
   };
+  title?: string;
 };
 
 export const getFollows = async (req: Request, res: Response) => {
@@ -78,12 +79,12 @@ export const getFollows = async (req: Request, res: Response) => {
 };
 
 export const getMyTweets = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
     const token = req.headers.authorization as string;
-    const user_id = (await getUserDetails(token)).data.id;
+    const user_id = req.user.data.id;
 
     const request = https.request(
-      `https://api.twitter.com/2/users/${user_id}/tweets?expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url`,
+      `https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url`,
       {
         method: "GET",
         headers: {
@@ -100,6 +101,10 @@ export const getMyTweets = catchAsync(
         });
         resp.on("end", () => {
           const tweeetsResp: TweetsResp = JSON.parse(data);
+
+          if (resp.statusCode !== 200)
+            return next(new AppError(tweeetsResp.title, resp.statusCode));
+
           const { data: tweets, includes, meta } = tweeetsResp;
 
           for (const tweet of tweets) {

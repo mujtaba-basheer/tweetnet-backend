@@ -79,73 +79,70 @@ exports.getFollows = getFollows;
 exports.getMyTweets = (0, catch_async_1["default"])(function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
     var token, user_id, request;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                token = req.headers.authorization;
-                return [4 /*yield*/, (0, user_1.getUserDetails)(token)];
-            case 1:
-                user_id = (_a.sent()).data.id;
-                request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url"), {
-                    method: "GET",
-                    headers: {
-                        Authorization: "Bearer ".concat(token)
-                    }
-                }, function (resp) {
-                    var data = "";
-                    resp.on("data", function (chunk) {
-                        data += chunk.toString();
+        token = req.headers.authorization;
+        user_id = req.user.data.id;
+        request = https.request("https://api.twitter.com/2/users/".concat(user_id, "/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url"), {
+            method: "GET",
+            headers: {
+                Authorization: "Bearer ".concat(token)
+            }
+        }, function (resp) {
+            var data = "";
+            resp.on("data", function (chunk) {
+                data += chunk.toString();
+            });
+            resp.on("error", function (err) {
+                return next(new app_error_1["default"](err.message, 503));
+            });
+            resp.on("end", function () {
+                var tweeetsResp = JSON.parse(data);
+                if (resp.statusCode !== 200)
+                    return next(new app_error_1["default"](tweeetsResp.title, resp.statusCode));
+                var tweets = tweeetsResp.data, includes = tweeetsResp.includes, meta = tweeetsResp.meta;
+                var _loop_1 = function (tweet) {
+                    var author_id = tweet.author_id;
+                    tweet.author_details = includes.users.find(function (_a) {
+                        var id = _a.id;
+                        return id === author_id;
                     });
-                    resp.on("error", function (err) {
-                        return next(new app_error_1["default"](err.message, 503));
-                    });
-                    resp.on("end", function () {
-                        var tweeetsResp = JSON.parse(data);
-                        var tweets = tweeetsResp.data, includes = tweeetsResp.includes, meta = tweeetsResp.meta;
-                        var _loop_1 = function (tweet) {
-                            var author_id = tweet.author_id;
-                            tweet.author_details = includes.users.find(function (_a) {
-                                var id = _a.id;
-                                return id === author_id;
-                            });
-                            if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
-                                var _loop_2 = function (media_key) {
-                                    var media = includes.media.find(function (x) { return x.media_key === media_key; });
-                                    var url = void 0;
-                                    if (media) {
-                                        if (media.type === "photo")
-                                            url = media.url;
-                                        else
-                                            url = media.preview_image_url;
-                                        if (!tweet.attachement_urls) {
-                                            tweet.attachement_urls = [url];
-                                        }
-                                        else
-                                            tweet.attachement_urls.push(url);
-                                    }
-                                };
-                                for (var _b = 0, _c = tweet.attachments.media_keys; _b < _c.length; _b++) {
-                                    var media_key = _c[_b];
-                                    _loop_2(media_key);
+                    if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
+                        var _loop_2 = function (media_key) {
+                            var media = includes.media.find(function (x) { return x.media_key === media_key; });
+                            var url = void 0;
+                            if (media) {
+                                if (media.type === "photo")
+                                    url = media.url;
+                                else
+                                    url = media.preview_image_url;
+                                if (!tweet.attachement_urls) {
+                                    tweet.attachement_urls = [url];
                                 }
+                                else
+                                    tweet.attachement_urls.push(url);
                             }
                         };
-                        for (var _i = 0, tweets_1 = tweets; _i < tweets_1.length; _i++) {
-                            var tweet = tweets_1[_i];
-                            _loop_1(tweet);
+                        for (var _b = 0, _c = tweet.attachments.media_keys; _b < _c.length; _b++) {
+                            var media_key = _c[_b];
+                            _loop_2(media_key);
                         }
-                        for (var _a = 0, tweets_2 = tweets; _a < tweets_2.length; _a++) {
-                            var tweet = tweets_2[_a];
-                            delete tweet.attachments;
-                        }
-                        res.json({
-                            status: true,
-                            data: { data: tweeetsResp.data, meta: meta }
-                        });
-                    });
+                    }
+                };
+                for (var _i = 0, tweets_1 = tweets; _i < tweets_1.length; _i++) {
+                    var tweet = tweets_1[_i];
+                    _loop_1(tweet);
+                }
+                for (var _a = 0, tweets_2 = tweets; _a < tweets_2.length; _a++) {
+                    var tweet = tweets_2[_a];
+                    delete tweet.attachments;
+                }
+                res.json({
+                    status: true,
+                    data: { data: tweeetsResp.data, meta: meta }
                 });
-                request.end();
-                return [2 /*return*/];
-        }
+            });
+        });
+        request.end();
+        return [2 /*return*/];
     });
 }); });
 var getTweets = function (req, res) { return __awaiter(void 0, void 0, void 0, function () {

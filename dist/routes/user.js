@@ -2,11 +2,12 @@
 exports.__esModule = true;
 var express_1 = require("express");
 var user_1 = require("../apis/user");
+var auth_1 = require("../middleware/auth");
 var userRouter = (0, express_1.Router)();
 // follows
 userRouter.get("/follows", user_1.getFollows);
 // tweets
-userRouter.get("/my-tweets/:id", user_1.getMyTweets);
+userRouter.get("/my-tweets", auth_1.protect, user_1.getMyTweets);
 // like
 userRouter.post("/like", user_1.likeTweet);
 // retweet

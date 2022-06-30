@@ -12,6 +12,7 @@ var errorHandler = function (err, req, res, next) {
     var statusCode = err.statusCode || 500;
     res.status(statusCode);
     res.status(statusCode).json({
+        status: false,
         message: err.message,
         // adding error stack in development environment
         stack: process.env.NODE_ENV === "production" ? null : err.stack

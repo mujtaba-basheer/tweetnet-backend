@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.createToken = exports.getAuthorizationParamsString = exports.getAuthorization = void 0;
+exports.createToken = exports.getAuthorizationParamsString = void 0;
 var crypto = require("crypto");
 var https = require("https");
 var rs = require("randomstring");
@@ -50,97 +50,6 @@ var percentEncode = function (str) {
         return "%" + character.charCodeAt(0).toString(16);
     });
 };
-// HMAC-SHA1 Encoding, uses jsSHA lib
-var hmac_sha1 = function (string, secret) {
-    var hmacValue = crypto
-        .createHmac("sha1", secret)
-        .update(string)
-        .digest("base64");
-    return hmacValue;
-};
-// Merge two objects
-var mergeObjs = function (obj1, obj2) {
-    for (var _i = 0, _a = Object.keys(obj2); _i < _a.length; _i++) {
-        var attr = _a[_i];
-        obj1[attr] = obj2[attr];
-    }
-    return obj1;
-};
-// Generate Sorted Parameter String for base string params
-var genSortedParamStr = function (params, key, token, timestamp, nonce) {
-    // Merge oauth params & request params to single object
-    var paramObj = mergeObjs({
-        include_entities: "true",
-        oauth_consumer_key: key,
-        oauth_nonce: nonce,
-        oauth_signature_method: "HMAC-SHA1",
-        oauth_timestamp: timestamp,
-        oauth_token: token,
-        oauth_version: "1.0"
-    }, params);
-    // Sort alphabetically
-    var paramObjKeys = Object.keys(paramObj);
-    var len = paramObjKeys.length;
-    paramObjKeys.sort();
-    // Interpolate to string with format as key1=val1&key2=val2&...
-    var paramStr = paramObjKeys[0] + "=" + paramObj[paramObjKeys[0]];
-    for (var i = 1; i < len; i++) {
-        paramStr +=
-            "&" +
-                paramObjKeys[i] +
-                "=" +
-                percentEncode(decodeURIComponent(paramObj[paramObjKeys[i]]));
-    }
-    return paramStr;
-};
-var oAuthBaseString = function (method, url, params, key, token, timestamp, nonce) {
-    return (method +
-        "&" +
-        percentEncode(url) +
-        "&" +
-        percentEncode(genSortedParamStr(params, key, token, timestamp, nonce)));
-};
-var oAuthSigningKey = function (consumer_secret, token_secret) {
-    return percentEncode(consumer_secret) + "&" + token_secret
-        ? percentEncode(token_secret)
-        : "";
-};
-var oAuthSignature = function (base_string, signing_key) {
-    var signature = hmac_sha1(base_string, signing_key);
-    return signature;
-};
-var getAuthorization = function (httpMethod, baseUrl, reqParams) {
-    // Get acces keys
-    var consumerKey = process.env.API_KEY, consumerSecret = process.env.API_KEY_SECRET, accessToken = process.env.ACCESS_TOKEN, accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-    // timestamp as unix epoch
-    var timestamp = Math.round(Date.now() / 1000);
-    // nonce as base64 encoded unique random string
-    var nonce = Buffer.from(consumerKey + ":" + timestamp).toString("base64");
-    // generate signature from base string & signing key
-    var baseString = oAuthBaseString(httpMethod, baseUrl, reqParams, consumerKey, accessToken, timestamp, nonce);
-    var signingKey = oAuthSigningKey(consumerSecret, baseUrl.endsWith("request_token") ? "" : accessTokenSecret);
-    var signature = oAuthSignature(baseString, signingKey);
-    // return interpolated string
-    return ("OAuth " +
-        'oauth_consumer_key="' +
-        consumerKey +
-        '", ' +
-        'oauth_nonce="' +
-        nonce +
-        '", ' +
-        'oauth_signature="' +
-        signature +
-        '", ' +
-        'oauth_signature_method="HMAC-SHA1", ' +
-        'oauth_timestamp="' +
-        timestamp +
-        '", ' +
-        'oauth_token="' +
-        accessToken +
-        '", ' +
-        'oauth_version="1.0"');
-};
-exports.getAuthorization = getAuthorization;
 var getRadomString = function (len) {
     return new Promise(function (res, rej) {
         crypto.randomBytes(len, function (err, buff) {
@@ -191,6 +100,7 @@ var getAuthorizationParamsString = function (scope) { return __awaiter(void 0, v
 }); };
 exports.getAuthorizationParamsString = getAuthorizationParamsString;
 var createToken = function (code) {
+    console.log({ code_verifier: store.code_verifier });
     return new Promise(function (res, rej) {
         var request = https.request("https://api.twitter.com/2/oauth2/token", {
             method: "POST",
@@ -203,7 +113,12 @@ var createToken = function (code) {
                 data += chunk.toString();
             });
             resp.on("end", function () {
-                res(JSON.parse(data));
+                data = JSON.parse(data);
+                if (data.error) {
+                    rej(new Error(data.error));
+                }
+                else
+                    res(data);
             });
             resp.on("error", function (err) {
                 console.error(err);
