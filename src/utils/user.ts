@@ -6,7 +6,9 @@ type UserInfo = {
     id: string;
     name: string;
     username: string;
+    mid: string;
   };
+  title?: string;
 };
 
 export const getUserDetails: (token: string) => Promise<UserInfo> = (
@@ -27,7 +29,7 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
           data += chunk.toString();
         });
         resp.on("close", () => {
-          const user = JSON.parse(data);
+          const user = JSON.parse(data) as UserInfo;
           if (resp.statusCode === 200) res(user);
           else rej(new AppError(user.title, resp.statusCode));
         });

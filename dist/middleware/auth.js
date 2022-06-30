@@ -8,9 +8,10 @@ exports.protect = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const bearerToken = req.headers.authorization;
         if (bearerToken && bearerToken.startsWith("Bearer ")) {
-            const token = bearerToken.split(" ")[1];
+            const [, token, id] = bearerToken.split(" ");
             req.headers.authorization = token;
             const user = await (0, user_1.getUserDetails)(token);
+            user.data.mid = id;
             req.user = user;
             next();
         }

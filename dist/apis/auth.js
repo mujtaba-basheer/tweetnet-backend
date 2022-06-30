@@ -51,10 +51,9 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
                     Key: {
                         id: { S: mid },
                     },
-                    UpdateExpression: `SET mid=:mid, id=:id`,
+                    UpdateExpression: `SET tid=:tid`,
                     ExpressionAttributeValues: {
-                        ":mid": { S: mid },
-                        ":id": { S: t_user.data.id },
+                        ":tid": { S: t_user.data.id },
                     },
                     TableName: "Users",
                 };
@@ -84,13 +83,12 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
                     const current_username = t_user.data.username;
                     if (usernames.L.map((x) => x.S).includes(current_username)) {
                         // swapping id and mid if required
-                        if (!user.mid) {
+                        if (!user.tid) {
                             await updateUserId();
                         }
                         res.json({
                             status: true,
                             data: token,
-                            new: "yes",
                         });
                     }
                     else

@@ -47,7 +47,7 @@ export const getToken = catchAsync(
     try {
       type User = {
         id: { S: string };
-        mid?: { S: string };
+        tid?: { S: string };
         profile: {
           M: {
             usernames: {
@@ -68,10 +68,9 @@ export const getToken = catchAsync(
             Key: {
               id: { S: mid },
             },
-            UpdateExpression: `SET mid=:mid, id=:id`,
+            UpdateExpression: `SET tid=:tid`,
             ExpressionAttributeValues: {
-              ":mid": { S: mid },
-              ":id": { S: t_user.data.id },
+              ":tid": { S: t_user.data.id },
             },
             TableName: "Users",
           };
@@ -106,14 +105,13 @@ export const getToken = catchAsync(
             const current_username = t_user.data.username;
             if (usernames.L.map((x) => x.S).includes(current_username)) {
               // swapping id and mid if required
-              if (!user.mid) {
+              if (!user.tid) {
                 await updateUserId();
               }
 
               res.json({
                 status: true,
                 data: token,
-                new: "yes",
               });
             } else return next(new AppError("Twitter handle not found", 404));
           } catch (error) {

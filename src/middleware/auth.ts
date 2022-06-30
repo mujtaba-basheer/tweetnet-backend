@@ -8,9 +8,10 @@ export const protect = catchAsync(
     try {
       const bearerToken = req.headers.authorization;
       if (bearerToken && bearerToken.startsWith("Bearer ")) {
-        const token = bearerToken.split(" ")[1];
+        const [, token, id] = bearerToken.split(" ");
         req.headers.authorization = token;
         const user = await getUserDetails(token);
+        user.data.mid = id;
         req.user = user;
         next();
       } else throw new Error("Unauthorized");
