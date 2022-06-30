@@ -75,8 +75,9 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
             if (err)
                 return next(new app_error_1.default(err.message, 503));
             const user = data.Item;
+            console.log(user);
             if (user) {
-                const { profile: { usernames }, } = user;
+                const { profile: { M: { usernames }, }, } = user;
                 // swapping id and mid if required
                 try {
                     if (!user.mid) {
@@ -84,7 +85,7 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
                     }
                     // checking for valid usernames
                     const current_username = t_user.data.username;
-                    if (usernames.includes(current_username)) {
+                    if (usernames.map((x) => x.S).includes(current_username)) {
                         res.json({
                             status: true,
                             data: token,

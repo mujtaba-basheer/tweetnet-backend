@@ -46,10 +46,12 @@ export const getToken = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       type User = {
-        id: string;
-        mid?: string;
+        id: { S: string };
+        mid?: { S: string };
         profile: {
-          usernames: string[];
+          M: {
+            usernames: { S: string }[];
+          };
         };
       };
 
@@ -87,10 +89,13 @@ export const getToken = catchAsync(
       dynamodb.getItem(getUserParams, async (err, data) => {
         if (err) return next(new AppError(err.message, 503));
         const user = data.Item as User;
+        console.log(user);
 
         if (user) {
           const {
-            profile: { usernames },
+            profile: {
+              M: { usernames },
+            },
           } = user;
 
           // swapping id and mid if required
@@ -101,7 +106,7 @@ export const getToken = catchAsync(
 
             // checking for valid usernames
             const current_username = t_user.data.username;
-            if (usernames.includes(current_username)) {
+            if (usernames.map((x) => x.S).includes(current_username)) {
               res.json({
                 status: true,
                 data: token,
