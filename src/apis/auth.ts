@@ -64,7 +64,7 @@ export const getToken = catchAsync(
         return new Promise((resolve, rej) => {
           const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
             Key: mid,
-            UpdateExpression: `return next(new AppError("Error Updating details", 501))SET mid=:mid, id=:id`,
+            UpdateExpression: `SET mid=:mid, id=:id`,
             ExpressionAttributeValues: {
               ":mid": { S: mid },
               ":id": { S: t_user.data.id },
