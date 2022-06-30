@@ -9,7 +9,7 @@ exports.protect = (0, catch_async_1.default)(async (req, res, next) => {
         const bearerToken = req.headers.authorization;
         if (bearerToken && bearerToken.startsWith("Bearer ")) {
             const unparsed_token = bearerToken.split(" ")[1];
-            const i = unparsed_token.indexOf("k2a");
+            const i = unparsed_token.indexOf("K2a");
             const token = unparsed_token.substring(0, i);
             const id = unparsed_token.slice(i + 3, -4);
             req.headers.authorization = token;
