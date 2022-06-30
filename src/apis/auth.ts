@@ -124,8 +124,6 @@ export const getUsers = catchAsync(
           } else return next(new AppError("Twitter handle not found", 404));
         } else return next(new AppError("User not found", 404));
       });
-
-      res.json({ status: true, data: token });
     } catch (error) {
       return new AppError(error.message, 501);
     }
