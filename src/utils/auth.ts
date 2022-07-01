@@ -15,9 +15,9 @@ const iv = Buffer.from(process.env.CYPHER_IV).toString("hex").substring(0, 16);
 // Encrypting
 export const encrypt = (text: string) => {
   let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
-  let encrypted = cipher.update(text, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  return encrypted;
+  let encrypted = cipher.update(text, "utf8", "binary");
+  encrypted += cipher.final("binary");
+  return Buffer.from(encrypted, "binary").toString("hex");
 };
 
 // Decrypting text
