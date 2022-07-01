@@ -11,9 +11,9 @@ export const protect = catchAsync(
       if (bearerToken && bearerToken.startsWith("Bearer ")) {
         const unparsed_token = bearerToken.split(" ")[1];
         let [mid, token] = unparsed_token.split(".");
+        const user = await getUserDetails(token);
         token = decrypt(token);
         req.headers.authorization = token;
-        const user = await getUserDetails(token);
         user.data.mid = mid;
         req.user = user;
         next();
