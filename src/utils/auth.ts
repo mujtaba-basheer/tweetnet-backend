@@ -11,7 +11,7 @@ const store = {
 
 const algorithm = "aes-256-cbc";
 const key = process.env.SALT;
-const iv = process.env.CIPHER_IV.toString("hex");
+const iv = Buffer.from(process.env.CIPHER_IV).toString("hex");
 // Encrypting
 export const encrypt = (text: string) => {
   let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
