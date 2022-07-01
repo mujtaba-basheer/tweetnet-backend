@@ -41,19 +41,17 @@ export const authorizationUrl = catchAsync(
 );
 
 export const getFreshToken = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
     try {
       type ReqBody = {
         token: {
           refresh_token: string;
         };
-        mid: string;
       };
-      const token = req.headers.authorization;
       const {
         token: { refresh_token },
-        mid,
       } = req.body as ReqBody;
+      const mid = req.user.mid;
 
       const new_access_token = await regenerateToken(refresh_token);
 

@@ -1,5 +1,6 @@
 import * as https from "https";
 import AppError from "./app-error";
+import { decrypt } from "./auth";
 
 type UserInfo = {
   data: {
@@ -20,7 +21,7 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${decrypt(token)}`,
         },
       },
       (resp) => {
@@ -30,7 +31,6 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
         });
         resp.on("close", () => {
           const user = JSON.parse(data) as UserInfo;
-          console.log({ server_msg: data });
           if (resp.statusCode === 200) res(user);
           else rej(new AppError(user.title, resp.statusCode));
         });
