@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.revokeToken = exports.createToken = exports.regenerateToken = exports.getAuthorizationParamsString = void 0;
+exports.revokeToken = exports.createToken = exports.regenerateToken = exports.getAuthorizationParamsString = exports.decrypt = exports.encrypt = void 0;
 const crypto = require("crypto");
 const https = require("https");
 const dotenv_1 = require("dotenv");
@@ -10,6 +10,26 @@ const base64url_1 = require("base64url");
 const store = {
     code_verifier: "",
 };
+const algorithm = "aes-256-cbc";
+const key = process.env.SALT;
+const iv = "                ";
+// Encrypting
+const encrypt = (text) => {
+    let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), "     ");
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return encrypted.toString("hex");
+};
+exports.encrypt = encrypt;
+// Decrypting text
+const decrypt = (text) => {
+    let encryptedText = Buffer.from(text, "hex");
+    let decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+};
+exports.decrypt = decrypt;
 // Percent encoding
 const percentEncode = (str) => {
     return encodeURIComponent(str).replace(/[!*()']/g, (character) => {
@@ -71,8 +91,10 @@ const regenerateToken = (refresh_token) => {
                 if (data.error) {
                     rej(new Error(data.error));
                 }
-                else
+                else {
+                    data.access_token = (0, exports.encrypt)(data.access_token);
                     res(data);
+                }
             });
             resp.on("error", (err) => {
                 console.error(err);
@@ -106,8 +128,10 @@ const createToken = (code) => {
                 if (data.error) {
                     rej(new Error(data.error));
                 }
-                else
+                else {
+                    data.access_token = (0, exports.encrypt)(data.access_token);
                     res(data);
+                }
             });
             resp.on("error", (err) => {
                 console.error(err);

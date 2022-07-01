@@ -61,7 +61,7 @@ export const getFreshToken = catchAsync(
         status: true,
         data: {
           ...new_access_token,
-          access_token: `${mid}K2a${new_access_token.access_token}3a1G`,
+          access_token: `${mid}.${new_access_token.access_token}`,
         },
       });
     } catch (error) {
@@ -115,7 +115,7 @@ export const getToken = catchAsync(
               status: true,
               data: {
                 ...token,
-                access_token: `${mid}K2a${token.access_token}3a1G`,
+                access_token: `${mid}.${token.access_token}`,
               },
             });
           } else return next(new AppError("Twitter handle not found", 404));

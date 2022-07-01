@@ -39,7 +39,7 @@ exports.getFreshToken = (0, catch_async_1.default)(async (req, res, next) => {
         const new_access_token = await (0, auth_1.regenerateToken)(refresh_token);
         res.json({
             status: true,
-            data: Object.assign(Object.assign({}, new_access_token), { access_token: `${mid}K2a${new_access_token.access_token}3a1G` }),
+            data: Object.assign(Object.assign({}, new_access_token), { access_token: `${mid}.${new_access_token.access_token}` }),
         });
     }
     catch (error) {
@@ -69,7 +69,7 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
                 if (usernames.L.map((x) => x.S).includes(current_username)) {
                     res.json({
                         status: true,
-                        data: Object.assign(Object.assign({}, token), { access_token: `${mid}K2a${token.access_token}3a1G` }),
+                        data: Object.assign(Object.assign({}, token), { access_token: `${mid}.${token.access_token}` }),
                     });
                 }
                 else

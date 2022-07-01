@@ -9,6 +9,26 @@ const store = {
   code_verifier: "",
 };
 
+const algorithm = "aes-256-cbc";
+const key = process.env.SALT;
+const iv = "                ";
+// Encrypting
+export const encrypt = (text: string) => {
+  let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), "     ");
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return encrypted.toString("hex");
+};
+
+// Decrypting text
+export const decrypt = (text: string) => {
+  let encryptedText = Buffer.from(text, "hex");
+  let decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+};
+
 // Percent encoding
 const percentEncode = (str: string) => {
   return encodeURIComponent(str).replace(/[!*()']/g, (character) => {
@@ -81,7 +101,10 @@ export const regenerateToken: (
           data = JSON.parse(data);
           if (data.error) {
             rej(new Error(data.error));
-          } else res(data);
+          } else {
+            data.access_token = encrypt(data.access_token);
+            res(data);
+          }
         });
         resp.on("error", (err) => {
           console.error(err);
@@ -122,7 +145,10 @@ export const createToken: (
           data = JSON.parse(data);
           if (data.error) {
             rej(new Error(data.error));
-          } else res(data);
+          } else {
+            data.access_token = encrypt(data.access_token);
+            res(data);
+          }
         });
         resp.on("error", (err) => {
           console.error(err);
