@@ -32,7 +32,6 @@ exports.validate = (0, catch_async_1.default)(async (req, res, next) => {
             const unparsed_token = bearerToken.split(" ")[1];
             let [mid, token] = unparsed_token.split(".");
             token = (0, auth_1.decrypt)(token);
-            console.log({ mid, token });
             const user = { data: { mid } };
             req.headers.authorization = token;
             req.user = user;

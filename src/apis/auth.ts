@@ -52,8 +52,7 @@ export const getFreshToken = catchAsync(
       const {
         token: { refresh_token },
       } = req.body as ReqBody;
-      const mid = req.user.mid;
-      console.log({ mid, refresh_token });
+      const mid = req.user.data.mid;
 
       const new_access_token = await regenerateToken(refresh_token);
 

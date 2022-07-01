@@ -35,8 +35,7 @@ exports.authorizationUrl = (0, catch_async_1.default)(async (req, res) => {
 exports.getFreshToken = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const { token: { refresh_token }, } = req.body;
-        const mid = req.user.mid;
-        console.log({ mid, refresh_token });
+        const mid = req.user.data.mid;
         const new_access_token = await (0, auth_1.regenerateToken)(refresh_token);
         res.json({
             status: true,
