@@ -12,10 +12,10 @@ const store = {
 };
 const algorithm = "aes-256-cbc";
 const key = process.env.SALT;
-const iv = "                ";
+const iv = process.env.CYPHER_IV;
 // Encrypting
 const encrypt = (text) => {
-    let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), "     ");
+    let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
     let encrypted = cipher.update(text);
     encrypted = Buffer.concat([encrypted, cipher.final()]);
     return encrypted.toString("hex");
