@@ -15,18 +15,18 @@ const iv = Buffer.from(process.env.CYPHER_IV).toString("hex").substring(0, 16);
 // Encrypting
 export const encrypt = (text: string) => {
   let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return encrypted.toString("hex");
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  return encrypted;
 };
 
 // Decrypting text
 export const decrypt = (text: string) => {
-  let encryptedText = Buffer.from(text, "hex");
+  let encryptedText = Buffer.from(text, "hex").toString("binary");
   let decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), iv);
-  let decrypted = decipher.update(encryptedText);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return decrypted.toString();
+  let decrypted = decipher.update(encryptedText, "binary", "utf8");
+  decrypted += decipher.final("utf8");
+  return decrypted;
 };
 
 // Percent encoding
