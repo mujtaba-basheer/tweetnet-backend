@@ -12,7 +12,7 @@ const store = {
 };
 const algorithm = "aes-256-cbc";
 const key = process.env.SALT;
-const iv = process.env.CYPHER_IV;
+const iv = process.env.CIPHER_IV.toString("hex");
 // Encrypting
 const encrypt = (text) => {
     let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
