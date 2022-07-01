@@ -4,6 +4,7 @@ import {
   createToken,
   regenerateToken,
   revokeToken,
+  decrypt,
 } from "../utils/auth";
 import AppError from "../utils/app-error";
 import catchAsync from "../utils/catch-async";
@@ -85,7 +86,7 @@ export const getToken = catchAsync(
 
       const { code, mid } = req.body;
       const token = await createToken(code);
-      const t_user = await getUserDetails(token.access_token);
+      const t_user = await getUserDetails(decrypt(token.access_token));
 
       // getting user from db
       const getUserParams: AWS.DynamoDB.GetItemInput = {

@@ -3,13 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkTweetLike = exports.getUserDetails = void 0;
 const https = require("https");
 const app_error_1 = require("./app-error");
-const auth_1 = require("./auth");
 const getUserDetails = (token) => {
     return new Promise((res, rej) => {
         const request = https.request("https://api.twitter.com/2/users/me", {
             method: "GET",
             headers: {
-                Authorization: `Bearer ${(0, auth_1.decrypt)(token)}`,
+                Authorization: `Bearer ${token}`,
             },
         }, (resp) => {
             let data = "";

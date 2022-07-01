@@ -15,7 +15,7 @@ const key = process.env.SALT;
 const iv = Buffer.from(process.env.CYPHER_IV).toString("hex").substring(0, 16);
 // Encrypting
 const encrypt = (text) => {
-    let cipher = crypto.createCipheriv(algorithm, Buffer.from(key), iv);
+    let cipher = crypto.createCipheriv(algorithm, Buffer.from(key, "utf8"), iv);
     let encrypted = cipher.update(text, "utf8", "binary");
     encrypted += cipher.final("binary");
     return Buffer.from(encrypted, "binary").toString("hex");

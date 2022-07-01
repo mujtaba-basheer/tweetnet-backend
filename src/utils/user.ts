@@ -1,6 +1,5 @@
 import * as https from "https";
 import AppError from "./app-error";
-import { decrypt } from "./auth";
 
 type UserInfo = {
   data: {
@@ -21,7 +20,7 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${decrypt(token)}`,
+          Authorization: `Bearer ${token}`,
         },
       },
       (resp) => {
