@@ -17,6 +17,7 @@ const getUserDetails = (token) => {
             });
             resp.on("close", () => {
                 const user = JSON.parse(data);
+                console.log({ server_msg: data });
                 if (resp.statusCode === 200)
                     res(user);
                 else

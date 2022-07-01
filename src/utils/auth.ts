@@ -60,6 +60,47 @@ export const getAuthorizationParamsString = async (scope: string[]) => {
   return attrs.join("&");
 };
 
+export const regenerateToken: (
+  refresh_token: string
+) => Promise<{ access_token: string }> = (refresh_token: string) => {
+  return new Promise((res, rej) => {
+    const request = https.request(
+      "https://api.twitter.com/2/oauth2/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      },
+      (resp) => {
+        let data: any = "";
+        resp.on("data", (chunk) => {
+          data += chunk.toString();
+        });
+        resp.on("end", () => {
+          data = JSON.parse(data);
+          if (data.error) {
+            rej(new Error(data.error));
+          } else res(data);
+        });
+        resp.on("error", (err) => {
+          console.error(err);
+          rej(err);
+        });
+      }
+    );
+
+    const body = {
+      refresh_token,
+      grant_type: "refresh_token",
+      client_id: process.env.CLIENT_ID,
+    };
+
+    request.write(new URLSearchParams(body).toString());
+    request.end();
+  });
+};
+
 export const createToken: (
   code: string
 ) => Promise<{ access_token: string }> = (code: string) => {
@@ -99,6 +140,46 @@ export const createToken: (
           ? process.env.REDIRECT_URI
           : process.env.REDIRECT_URI_DEV,
       code_verifier: store.code_verifier,
+    };
+
+    request.write(new URLSearchParams(body).toString());
+    request.end();
+  });
+};
+
+export const revokeToken: (
+  token: string
+) => Promise<{ access_token: string }> = (token: string) => {
+  return new Promise((res, rej) => {
+    const request = https.request(
+      "https://api.twitter.com/2/oauth2/revoke",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      },
+      (resp) => {
+        let data: any = "";
+        resp.on("data", (chunk) => {
+          data += chunk.toString();
+        });
+        resp.on("end", () => {
+          data = JSON.parse(data);
+          if (data.error) {
+            rej(new Error(data.error));
+          } else res(data);
+        });
+        resp.on("error", (err) => {
+          console.error(err);
+          rej(err);
+        });
+      }
+    );
+
+    const body = {
+      token,
+      client_id: process.env.CLIENT_ID,
     };
 
     request.write(new URLSearchParams(body).toString());

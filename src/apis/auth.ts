@@ -1,7 +1,13 @@
 import { NextFunction, Request, Response } from "express";
-import { getAuthorizationParamsString, createToken } from "../utils/auth";
+import {
+  getAuthorizationParamsString,
+  createToken,
+  regenerateToken,
+  revokeToken,
+} from "../utils/auth";
 import AppError from "../utils/app-error";
 import catchAsync from "../utils/catch-async";
+import api_scope from "../data/scope";
 import { config } from "dotenv";
 import * as AWS from "aws-sdk";
 import { getUserDetails } from "../utils/user";
@@ -21,16 +27,8 @@ const dynamodb = new AWS.DynamoDB({
 export const authorizationUrl = catchAsync(
   async (req: Request, res: Response) => {
     const baseUrl = "https://twitter.com/i/oauth2/authorize";
-    const scope = [
-      "tweet.read",
-      "follows.read",
-      "users.read",
-      "like.read",
-      "like.write",
-      "tweet.write",
-    ];
     try {
-      const qs = await getAuthorizationParamsString(scope);
+      const qs = await getAuthorizationParamsString(api_scope);
 
       res.json({
         status: true,
@@ -38,6 +36,36 @@ export const authorizationUrl = catchAsync(
       });
     } catch (error) {
       return new AppError(error.message, 503);
+    }
+  }
+);
+
+export const getFreshToken = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      type ReqBody = {
+        token: {
+          refresh_token: string;
+        };
+        mid: string;
+      };
+      const token = req.headers.authorization;
+      const {
+        token: { refresh_token },
+        mid,
+      } = req.body as ReqBody;
+
+      const new_access_token = await regenerateToken(refresh_token);
+
+      res.json({
+        status: true,
+        data: {
+          ...new_access_token,
+          access_token: `${mid}K2a${new_access_token.access_token}3a1G`,
+        },
+      });
+    } catch (error) {
+      return next(new AppError(error.message, error.statusCode || 501));
     }
   }
 );
@@ -92,6 +120,22 @@ export const getToken = catchAsync(
             });
           } else return next(new AppError("Twitter handle not found", 404));
         } else return next(new AppError("User not found", 404));
+      });
+    } catch (error) {
+      return next(new AppError(error.message, 501));
+    }
+  }
+);
+
+export const logout = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization;
+      await revokeToken(token);
+
+      res.json({
+        status: true,
+        message: "Access token revoked",
       });
     } catch (error) {
       return next(new AppError(error.message, 501));

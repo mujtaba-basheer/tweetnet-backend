@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getToken = exports.authorizationUrl = void 0;
+exports.logout = exports.getToken = exports.getFreshToken = exports.authorizationUrl = void 0;
 const auth_1 = require("../utils/auth");
 const app_error_1 = require("../utils/app-error");
 const catch_async_1 = require("../utils/catch-async");
+const scope_1 = require("../data/scope");
 const dotenv_1 = require("dotenv");
 const AWS = require("aws-sdk");
 const user_1 = require("../utils/user");
@@ -20,16 +21,8 @@ const dynamodb = new AWS.DynamoDB({
 });
 exports.authorizationUrl = (0, catch_async_1.default)(async (req, res) => {
     const baseUrl = "https://twitter.com/i/oauth2/authorize";
-    const scope = [
-        "tweet.read",
-        "follows.read",
-        "users.read",
-        "like.read",
-        "like.write",
-        "tweet.write",
-    ];
     try {
-        const qs = await (0, auth_1.getAuthorizationParamsString)(scope);
+        const qs = await (0, auth_1.getAuthorizationParamsString)(scope_1.default);
         res.json({
             status: true,
             data: baseUrl + "?" + qs,
@@ -37,6 +30,20 @@ exports.authorizationUrl = (0, catch_async_1.default)(async (req, res) => {
     }
     catch (error) {
         return new app_error_1.default(error.message, 503);
+    }
+});
+exports.getFreshToken = (0, catch_async_1.default)(async (req, res, next) => {
+    try {
+        const token = req.headers.authorization;
+        const { token: { refresh_token }, mid, } = req.body;
+        const new_access_token = await (0, auth_1.regenerateToken)(refresh_token);
+        res.json({
+            status: true,
+            data: Object.assign(Object.assign({}, new_access_token), { access_token: `${mid}K2a${new_access_token.access_token}3a1G` }),
+        });
+    }
+    catch (error) {
+        return next(new app_error_1.default(error.message, error.statusCode || 501));
     }
 });
 exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
@@ -70,6 +77,19 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
             }
             else
                 return next(new app_error_1.default("User not found", 404));
+        });
+    }
+    catch (error) {
+        return next(new app_error_1.default(error.message, 501));
+    }
+});
+exports.logout = (0, catch_async_1.default)(async (req, res, next) => {
+    try {
+        const token = req.headers.authorization;
+        await (0, auth_1.revokeToken)(token);
+        res.json({
+            status: true,
+            message: "Access token revoked",
         });
     }
     catch (error) {

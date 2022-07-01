@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createToken = exports.getAuthorizationParamsString = void 0;
+exports.revokeToken = exports.createToken = exports.regenerateToken = exports.getAuthorizationParamsString = void 0;
 const crypto = require("crypto");
 const https = require("https");
 const dotenv_1 = require("dotenv");
@@ -54,6 +54,41 @@ const getAuthorizationParamsString = async (scope) => {
     return attrs.join("&");
 };
 exports.getAuthorizationParamsString = getAuthorizationParamsString;
+const regenerateToken = (refresh_token) => {
+    return new Promise((res, rej) => {
+        const request = https.request("https://api.twitter.com/2/oauth2/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        }, (resp) => {
+            let data = "";
+            resp.on("data", (chunk) => {
+                data += chunk.toString();
+            });
+            resp.on("end", () => {
+                data = JSON.parse(data);
+                if (data.error) {
+                    rej(new Error(data.error));
+                }
+                else
+                    res(data);
+            });
+            resp.on("error", (err) => {
+                console.error(err);
+                rej(err);
+            });
+        });
+        const body = {
+            refresh_token,
+            grant_type: "refresh_token",
+            client_id: process.env.CLIENT_ID,
+        };
+        request.write(new URLSearchParams(body).toString());
+        request.end();
+    });
+};
+exports.regenerateToken = regenerateToken;
 const createToken = (code) => {
     return new Promise((res, rej) => {
         const request = https.request("https://api.twitter.com/2/oauth2/token", {
@@ -93,3 +128,37 @@ const createToken = (code) => {
     });
 };
 exports.createToken = createToken;
+const revokeToken = (token) => {
+    return new Promise((res, rej) => {
+        const request = https.request("https://api.twitter.com/2/oauth2/revoke", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        }, (resp) => {
+            let data = "";
+            resp.on("data", (chunk) => {
+                data += chunk.toString();
+            });
+            resp.on("end", () => {
+                data = JSON.parse(data);
+                if (data.error) {
+                    rej(new Error(data.error));
+                }
+                else
+                    res(data);
+            });
+            resp.on("error", (err) => {
+                console.error(err);
+                rej(err);
+            });
+        });
+        const body = {
+            token,
+            client_id: process.env.CLIENT_ID,
+        };
+        request.write(new URLSearchParams(body).toString());
+        request.end();
+    });
+};
+exports.revokeToken = revokeToken;

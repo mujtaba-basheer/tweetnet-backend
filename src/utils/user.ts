@@ -30,6 +30,7 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
         });
         resp.on("close", () => {
           const user = JSON.parse(data) as UserInfo;
+          console.log({ server_msg: data });
           if (resp.statusCode === 200) res(user);
           else rej(new AppError(user.title, resp.statusCode));
         });
