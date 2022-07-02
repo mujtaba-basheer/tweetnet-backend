@@ -93,6 +93,7 @@ const regenerateToken = (refresh_token) => {
                 }
                 else {
                     data.access_token = (0, exports.encrypt)(data.access_token);
+                    data.refresh_token = (0, exports.encrypt)(data.refresh_token);
                     res(data);
                 }
             });
@@ -102,7 +103,7 @@ const regenerateToken = (refresh_token) => {
             });
         });
         const body = {
-            refresh_token,
+            refresh_token: (0, exports.decrypt)(refresh_token),
             grant_type: "refresh_token",
             client_id: process.env.CLIENT_ID,
         };
@@ -130,6 +131,7 @@ const createToken = (code) => {
                 }
                 else {
                     data.access_token = (0, exports.encrypt)(data.access_token);
+                    data.refresh_token = (0, exports.encrypt)(data.refresh_token);
                     res(data);
                 }
             });
@@ -154,10 +156,11 @@ const createToken = (code) => {
 exports.createToken = createToken;
 const revokeToken = (token) => {
     return new Promise((res, rej) => {
-        const request = https.request("https://api.twitter.com/2/oauth2/revoke", {
+        const request = https.request(`https://api.twitter.com/2/oauth2/revoke`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
+                Authorization: `Basic ${token}`,
             },
         }, (resp) => {
             let data = "";
@@ -167,6 +170,7 @@ const revokeToken = (token) => {
             resp.on("end", () => {
                 data = JSON.parse(data);
                 if (data.error) {
+                    console.log(data);
                     rej(new Error(data.error));
                 }
                 else
@@ -179,9 +183,10 @@ const revokeToken = (token) => {
         });
         const body = {
             token,
+            token_type_hint: "refresh_token",
             client_id: process.env.CLIENT_ID,
         };
-        request.write(new URLSearchParams(body).toString());
+        request.write(JSON.stringify(body));
         request.end();
     });
 };

@@ -366,37 +366,66 @@ exports.retweetTweet = (0, catch_async_1.default)(async (req, res, next) => {
         return next(new app_error_1.default(error.message, 501));
     }
 });
-const replyToTweet = async (req, res) => {
-    const token = req.headers.authorization;
-    const { tweet_id, text } = req.body;
-    const body = {
-        text,
-        reply: {
-            in_reply_to_tweet_id: tweet_id,
-        },
-    };
-    const request = https.request("https://api.twitter.com/2/tweets", {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-    }, (resp) => {
-        let data = "";
-        resp.on("data", (chunk) => {
-            data += chunk.toString();
-        });
-        resp.on("error", (err) => {
-            console.error(err);
-        });
-        resp.on("end", () => {
-            res.json({
-                status: true,
-                data: JSON.parse(data),
+exports.replyToTweet = (0, catch_async_1.default)(async (req, res, next) => {
+    try {
+        const token = req.headers.authorization;
+        const { mid } = req.user.data;
+        const tweet_id = req.params.tid;
+        const { text } = req.body;
+        const body = {
+            text,
+            reply: {
+                in_reply_to_tweet_id: tweet_id,
+            },
+        };
+        const request = https.request("https://api.twitter.com/2/tweets", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        }, (resp) => {
+            let data = "";
+            resp.on("data", (chunk) => {
+                data += chunk.toString();
+            });
+            resp.on("error", (err) => {
+                console.error(err);
+            });
+            resp.on("end", () => {
+                data = JSON.parse(data);
+                if (data.error) {
+                    return next(new app_error_1.default(data.error, 503));
+                }
+                // adding task record to DB
+                const updateTweetParams = {
+                    Key: {
+                        id: { S: tweet_id },
+                    },
+                    AttributeUpdates: {
+                        acted_by: {
+                            Action: "ADD",
+                            Value: {
+                                L: [{ S: mid }],
+                            },
+                        },
+                    },
+                    TableName: "Tweets",
+                };
+                dynamodb.updateItem(updateTweetParams, (err, data) => {
+                    if (err)
+                        return next(new app_error_1.default(err.message, 501));
+                    res.json({
+                        status: true,
+                        message: "Tweet replied to",
+                    });
+                });
             });
         });
-    });
-    request.write(JSON.stringify(body));
-    request.end();
-};
-exports.replyToTweet = replyToTweet;
+        request.write(JSON.stringify(body));
+        request.end();
+    }
+    catch (error) {
+        return next(new app_error_1.default(error.message, 501));
+    }
+});

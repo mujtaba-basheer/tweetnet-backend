@@ -11,5 +11,5 @@ authRouter.post("/token", auth_1.getToken);
 // refresh token
 authRouter.post("/refresh-token", auth_2.validate, auth_1.getFreshToken);
 // logout
-authRouter.get("/logout", auth_1.logout);
+authRouter.get("/logout", auth_2.protect, auth_1.logout);
 exports.default = authRouter;

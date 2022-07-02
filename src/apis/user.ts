@@ -499,42 +499,74 @@ export const retweetTweet = catchAsync(
   }
 );
 
-export const replyToTweet = async (req: Request, res: Response) => {
-  const token = req.headers.authorization as string;
-  const { tweet_id, text } = req.body;
+export const replyToTweet = catchAsync(
+  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization;
+      const { mid } = req.user.data;
+      const tweet_id = req.params.tid;
+      const { text } = req.body;
 
-  const body = {
-    text,
-    reply: {
-      in_reply_to_tweet_id: tweet_id,
-    },
-  };
+      const body = {
+        text,
+        reply: {
+          in_reply_to_tweet_id: tweet_id,
+        },
+      };
 
-  const request = https.request(
-    "https://api.twitter.com/2/tweets",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    },
-    (resp) => {
-      let data = "";
-      resp.on("data", (chunk) => {
-        data += chunk.toString();
-      });
-      resp.on("error", (err) => {
-        console.error(err);
-      });
-      resp.on("end", () => {
-        res.json({
-          status: true,
-          data: JSON.parse(data),
-        });
-      });
+      const request = https.request(
+        "https://api.twitter.com/2/tweets",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+        (resp) => {
+          let data: any = "";
+          resp.on("data", (chunk) => {
+            data += chunk.toString();
+          });
+          resp.on("error", (err) => {
+            console.error(err);
+          });
+          resp.on("end", () => {
+            data = JSON.parse(data);
+            if (data.error) {
+              return next(new AppError(data.error, 503));
+            }
+
+            // adding task record to DB
+            const updateTweetParams: AWS.DynamoDB.UpdateItemInput = {
+              Key: {
+                id: { S: tweet_id },
+              },
+              AttributeUpdates: {
+                acted_by: {
+                  Action: "ADD",
+                  Value: {
+                    L: [{ S: mid }],
+                  },
+                },
+              },
+              TableName: "Tweets",
+            };
+
+            dynamodb.updateItem(updateTweetParams, (err, data) => {
+              if (err) return next(new AppError(err.message, 501));
+              res.json({
+                status: true,
+                message: "Tweet replied to",
+              });
+            });
+          });
+        }
+      );
+      request.write(JSON.stringify(body));
+      request.end();
+    } catch (error) {
+      return next(new AppError(error.message, 501));
     }
-  );
-  request.write(JSON.stringify(body));
-  request.end();
-};
+  }
+);

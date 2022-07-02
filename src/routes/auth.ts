@@ -5,7 +5,7 @@ import {
   logout,
   getFreshToken,
 } from "../apis/auth";
-import { validate } from "../middleware/auth";
+import { protect, validate } from "../middleware/auth";
 
 const authRouter = Router();
 
@@ -19,6 +19,6 @@ authRouter.post("/token", getToken);
 authRouter.post("/refresh-token", validate, getFreshToken);
 
 // logout
-authRouter.get("/logout", logout);
+authRouter.get("/logout", protect, logout);
 
 export default authRouter;

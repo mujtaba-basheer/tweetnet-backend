@@ -103,6 +103,7 @@ export const regenerateToken: (
             rej(new Error(data.error));
           } else {
             data.access_token = encrypt(data.access_token);
+            data.refresh_token = encrypt(data.refresh_token);
             res(data);
           }
         });
@@ -114,7 +115,7 @@ export const regenerateToken: (
     );
 
     const body = {
-      refresh_token,
+      refresh_token: decrypt(refresh_token),
       grant_type: "refresh_token",
       client_id: process.env.CLIENT_ID,
     };
@@ -147,6 +148,7 @@ export const createToken: (
             rej(new Error(data.error));
           } else {
             data.access_token = encrypt(data.access_token);
+            data.refresh_token = encrypt(data.refresh_token);
             res(data);
           }
         });
@@ -173,16 +175,17 @@ export const createToken: (
   });
 };
 
-export const revokeToken: (
+export const revokeToken: (token: string) => Promise<{ revoked: true }> = (
   token: string
-) => Promise<{ access_token: string }> = (token: string) => {
+) => {
   return new Promise((res, rej) => {
     const request = https.request(
-      "https://api.twitter.com/2/oauth2/revoke",
+      `https://api.twitter.com/2/oauth2/revoke`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${token}`,
         },
       },
       (resp) => {
@@ -193,6 +196,7 @@ export const revokeToken: (
         resp.on("end", () => {
           data = JSON.parse(data);
           if (data.error) {
+            console.log(data);
             rej(new Error(data.error));
           } else res(data);
         });
@@ -205,10 +209,11 @@ export const revokeToken: (
 
     const body = {
       token,
+      token_type_hint: "refresh_token",
       client_id: process.env.CLIENT_ID,
     };
 
-    request.write(new URLSearchParams(body).toString());
+    request.write(JSON.stringify(body));
     request.end();
   });
 };
