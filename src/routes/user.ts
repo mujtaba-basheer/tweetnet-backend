@@ -21,12 +21,12 @@ userRouter.get("/my-tweets", protect, getMyTweets);
 userRouter.post("/forward-tweets", protect, forwardTweets);
 
 // like
-userRouter.post("/like", likeTweet);
+userRouter.get("/like/:tid", protect, likeTweet);
 
 // retweet
-userRouter.post("/retweet", retweetTweet);
+userRouter.get("/retweet/:tid", protect, retweetTweet);
 
 // reply
-userRouter.post("/reply", replyToTweet);
+userRouter.post("/reply/:tid", protect, replyToTweet);
 
 export default userRouter;

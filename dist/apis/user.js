@@ -102,20 +102,20 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const { ids, task } = req.body;
         if (["like", "retweet", "reply"].includes(task)) {
-            const { id, mid } = req.user.data;
+            const { mid } = req.user.data;
             // getting user object from DB
             const getUserParams = {
                 Key: { id: { S: mid } },
                 TableName: "Users",
             };
             dynamodb.getItem(getUserParams, (err, data) => {
-                if (err) {
-                    console.log(err);
+                if (err || !data.Item) {
                     return next(new app_error_1.default(err.message, 503));
                 }
                 const user = data.Item;
-                let { count, last_posted } = user.stats[task];
-                const sid = user.membership.subscribed_to;
+                let { count: { N: count }, last_posted: { S: last_posted }, } = user.stats.M[task].M;
+                let c = +count;
+                const sid = user.membership.M.subscribed_to.S;
                 const n = ids.length;
                 const limit_o = subscription_1.default.find((x) => x.sid === sid);
                 // checking daily limits
@@ -127,15 +127,15 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                     try {
                         if (last_posted_date < created_at_date) {
                             if (n <= limit) {
-                                count = n;
+                                c = n;
                                 last_posted = created_at.toISOString();
                             }
                             else
                                 throw new Error("Limit Exceeded");
                         }
-                        else if (n + count <= limit) {
+                        else if (n + c <= limit) {
                             last_posted = created_at.toISOString();
-                            count += n;
+                            c += n;
                         }
                         else
                             throw new Error("Limit Exceeded");
@@ -161,13 +161,18 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                             // updating user data in DB
                             const updateUserParams = {
                                 Key: { id: { S: mid } },
-                                UpdateExpression: `SET stats.${task}.count = :c, stats.${task}.last_posted = :l_p`,
+                                UpdateExpression: "SET #stats=:stats",
+                                ExpressionAttributeNames: {
+                                    "#stats": "stats",
+                                },
                                 ExpressionAttributeValues: {
-                                    ":c": {
-                                        N: count + "",
-                                    },
-                                    ":l_p": {
-                                        S: last_posted,
+                                    ":stats": {
+                                        M: Object.assign(Object.assign({}, user.stats.M), { [task]: {
+                                                M: {
+                                                    count: { N: c + "" },
+                                                    last_posted: { S: last_posted },
+                                                },
+                                            } }),
                                     },
                                 },
                                 TableName: "Users",
@@ -249,37 +254,62 @@ const getTweets = async (req, res) => {
     request.end();
 };
 exports.getTweets = getTweets;
-const likeTweet = async (req, res) => {
-    const token = req.headers.authorization;
-    const user_id = (await (0, user_1.getUserDetails)(token)).data.id;
-    const tweet_id = req.body.tweet_id;
-    console.log({ body: req.body });
-    const request = https.request(`https://api.twitter.com/2/users/${user_id}/likes`, {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-    }, (resp) => {
-        let data = "";
-        resp.on("data", (chunk) => {
-            data += chunk.toString();
-        });
-        resp.on("error", (err) => {
-            console.error(err);
-        });
-        resp.on("end", () => {
-            console.log(JSON.parse(data));
-            res.json({
-                status: true,
-                data: JSON.parse(data),
+exports.likeTweet = (0, catch_async_1.default)(async (req, res, next) => {
+    try {
+        const token = req.headers.authorization;
+        const { id: user_id, mid } = req.user.data;
+        const tweet_id = req.params.tid;
+        const request = https.request(`https://api.twitter.com/2/users/${user_id}/likes`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        }, (resp) => {
+            let data = "";
+            resp.on("data", (chunk) => {
+                data += chunk.toString();
+            });
+            resp.on("error", (err) => {
+                console.error(err);
+            });
+            resp.on("end", () => {
+                data = JSON.parse(data);
+                if (data.error) {
+                    return next(new app_error_1.default(data.error, 503));
+                }
+                // adding task record to DB
+                const updateTweetParams = {
+                    Key: {
+                        id: { S: tweet_id },
+                    },
+                    AttributeUpdates: {
+                        stats: {
+                            Action: "ADD",
+                            Value: {
+                                L: [{ S: mid }],
+                            },
+                        },
+                    },
+                    TableName: "TWeets",
+                };
+                dynamodb.updateItem(updateTweetParams, (err, data) => {
+                    if (err)
+                        return next(new app_error_1.default(err.message, 501));
+                    res.json({
+                        status: true,
+                        message: "Tweet liked",
+                    });
+                });
             });
         });
-    });
-    request.write(JSON.stringify({ tweet_id }));
-    request.end();
-};
-exports.likeTweet = likeTweet;
+        request.write(JSON.stringify({ tweet_id }));
+        request.end();
+    }
+    catch (error) {
+        return next(new app_error_1.default(error.message, 501));
+    }
+});
 const retweetTweet = async (req, res) => {
     const token = req.headers.authorization;
     const user_id = (await (0, user_1.getUserDetails)(token)).data.id;

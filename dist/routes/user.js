@@ -11,9 +11,9 @@ userRouter.get("/my-tweets", auth_1.protect, user_1.getMyTweets);
 // forward tweets
 userRouter.post("/forward-tweets", auth_1.protect, user_1.forwardTweets);
 // like
-userRouter.post("/like", user_1.likeTweet);
+userRouter.get("/like/:tid", auth_1.protect, user_1.likeTweet);
 // retweet
-userRouter.post("/retweet", user_1.retweetTweet);
+userRouter.get("/retweet/:tid", auth_1.protect, user_1.retweetTweet);
 // reply
-userRouter.post("/reply", user_1.replyToTweet);
+userRouter.post("/reply/:tid", auth_1.protect, user_1.replyToTweet);
 exports.default = userRouter;

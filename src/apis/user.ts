@@ -185,34 +185,30 @@ export const forwardTweets = catchAsync(
       task: "like" | "retweet" | "reply";
     };
     type User = {
-      email: string;
-      id: string;
-      name: string;
-      profile: {
-        usernames: string[];
-      };
       membership: {
-        id: string;
-        status: string;
-        subscribed_to: string;
+        M: {
+          subscribed_to: { S: string };
+        };
       };
       stats: {
-        like: Stat;
-        retweet: Stat;
-        reply: Stat;
+        M: {
+          like: { M: Stat };
+          retweet: { M: Stat };
+          reply: { M: Stat };
+        };
       };
-      created_at: string;
+      created_at: { S: string };
     };
 
     type Stat = {
-      count: number;
-      last_posted: string;
+      count: { N: string };
+      last_posted: { S: string };
     };
 
     try {
       const { ids, task } = req.body as ForwardTweets;
       if (["like", "retweet", "reply"].includes(task)) {
-        const { id, mid } = req.user.data;
+        const { mid } = req.user.data;
 
         // getting user object from DB
         const getUserParams: AWS.DynamoDB.GetItemInput = {
@@ -220,14 +216,17 @@ export const forwardTweets = catchAsync(
           TableName: "Users",
         };
         dynamodb.getItem(getUserParams, (err, data) => {
-          if (err) {
-            console.log(err);
+          if (err || !data.Item) {
             return next(new AppError(err.message, 503));
           }
 
-          const user = data.Item as User;
-          let { count, last_posted } = user.stats[task];
-          const sid = user.membership.subscribed_to;
+          const user = data.Item as unknown as User;
+          let {
+            count: { N: count },
+            last_posted: { S: last_posted },
+          } = user.stats.M[task].M;
+          let c = +count;
+          const sid = user.membership.M.subscribed_to.S;
           const n = ids.length;
           const limit_o = limits.find((x) => x.sid === sid);
 
@@ -241,12 +240,12 @@ export const forwardTweets = catchAsync(
             try {
               if (last_posted_date < created_at_date) {
                 if (n <= limit) {
-                  count = n;
+                  c = n;
                   last_posted = created_at.toISOString();
                 } else throw new Error("Limit Exceeded");
-              } else if (n + count <= limit) {
+              } else if (n + c <= limit) {
                 last_posted = created_at.toISOString();
-                count += n;
+                c += n;
               } else throw new Error("Limit Exceeded");
 
               // adding tweets to DB
@@ -272,13 +271,21 @@ export const forwardTweets = catchAsync(
                 // updating user data in DB
                 const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
                   Key: { id: { S: mid } },
-                  UpdateExpression: `SET stats.${task}.count = :c, stats.${task}.last_posted = :l_p`,
+                  UpdateExpression: "SET #stats=:stats",
+                  ExpressionAttributeNames: {
+                    "#stats": "stats",
+                  },
                   ExpressionAttributeValues: {
-                    ":c": {
-                      N: count + "",
-                    },
-                    ":l_p": {
-                      S: last_posted,
+                    ":stats": {
+                      M: {
+                        ...user.stats.M,
+                        [task]: {
+                          M: {
+                            count: { N: c + "" },
+                            last_posted: { S: last_posted },
+                          },
+                        },
+                      },
                     },
                   },
                   TableName: "Users",
@@ -364,41 +371,69 @@ export const getTweets = async (req: Request, res: Response) => {
   request.end();
 };
 
-export const likeTweet = async (req: Request, res: Response) => {
-  const token = req.headers.authorization as string;
-  const user_id = (await getUserDetails(token)).data.id;
-  const tweet_id = req.body.tweet_id;
-  console.log({ body: req.body });
+export const likeTweet = catchAsync(
+  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization;
+      const { id: user_id, mid } = req.user.data;
+      const tweet_id = req.params.tid;
 
-  const request = https.request(
-    `https://api.twitter.com/2/users/${user_id}/likes`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    },
-    (resp) => {
-      let data = "";
-      resp.on("data", (chunk) => {
-        data += chunk.toString();
-      });
-      resp.on("error", (err) => {
-        console.error(err);
-      });
-      resp.on("end", () => {
-        console.log(JSON.parse(data));
-        res.json({
-          status: true,
-          data: JSON.parse(data),
-        });
-      });
+      const request = https.request(
+        `https://api.twitter.com/2/users/${user_id}/likes`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+        (resp) => {
+          let data: any = "";
+          resp.on("data", (chunk) => {
+            data += chunk.toString();
+          });
+          resp.on("error", (err) => {
+            console.error(err);
+          });
+          resp.on("end", () => {
+            data = JSON.parse(data);
+            if (data.error) {
+              return next(new AppError(data.error, 503));
+            }
+
+            // adding task record to DB
+            const updateTweetParams: AWS.DynamoDB.UpdateItemInput = {
+              Key: {
+                id: { S: tweet_id },
+              },
+              AttributeUpdates: {
+                stats: {
+                  Action: "ADD",
+                  Value: {
+                    L: [{ S: mid }],
+                  },
+                },
+              },
+              TableName: "TWeets",
+            };
+
+            dynamodb.updateItem(updateTweetParams, (err, data) => {
+              if (err) return next(new AppError(err.message, 501));
+              res.json({
+                status: true,
+                message: "Tweet liked",
+              });
+            });
+          });
+        }
+      );
+      request.write(JSON.stringify({ tweet_id }));
+      request.end();
+    } catch (error) {
+      return next(new AppError(error.message, 501));
     }
-  );
-  request.write(JSON.stringify({ tweet_id }));
-  request.end();
-};
+  }
+);
 
 export const retweetTweet = async (req: Request, res: Response) => {
   const token = req.headers.authorization as string;

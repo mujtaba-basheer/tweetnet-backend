@@ -87,7 +87,6 @@ const regenerateToken = (refresh_token) => {
                 data += chunk.toString();
             });
             resp.on("end", () => {
-                console.log(data);
                 data = JSON.parse(data);
                 if (data.error) {
                     rej(new Error(data.error));
