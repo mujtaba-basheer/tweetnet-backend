@@ -414,7 +414,7 @@ export const likeTweet = catchAsync(
                   },
                 },
               },
-              TableName: "TWeets",
+              TableName: "Tweets",
             };
 
             dynamodb.updateItem(updateTweetParams, (err, data) => {
@@ -478,14 +478,14 @@ export const retweetTweet = catchAsync(
                   },
                 },
               },
-              TableName: "TWeets",
+              TableName: "Tweets",
             };
 
             dynamodb.updateItem(updateTweetParams, (err, data) => {
               if (err) return next(new AppError(err.message, 501));
               res.json({
                 status: true,
-                message: "Tweet liked",
+                message: "Tweet retweeted",
               });
             });
           });

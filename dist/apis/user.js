@@ -291,7 +291,7 @@ exports.likeTweet = (0, catch_async_1.default)(async (req, res, next) => {
                             },
                         },
                     },
-                    TableName: "TWeets",
+                    TableName: "Tweets",
                 };
                 dynamodb.updateItem(updateTweetParams, (err, data) => {
                     if (err)
@@ -347,14 +347,14 @@ exports.retweetTweet = (0, catch_async_1.default)(async (req, res, next) => {
                             },
                         },
                     },
-                    TableName: "TWeets",
+                    TableName: "Tweets",
                 };
                 dynamodb.updateItem(updateTweetParams, (err, data) => {
                     if (err)
                         return next(new app_error_1.default(err.message, 501));
                     res.json({
                         status: true,
-                        message: "Tweet liked",
+                        message: "Tweet retweeted",
                     });
                 });
             });
