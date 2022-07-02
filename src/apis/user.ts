@@ -407,7 +407,7 @@ export const likeTweet = catchAsync(
                 id: { S: tweet_id },
               },
               AttributeUpdates: {
-                stats: {
+                acted_by: {
                   Action: "ADD",
                   Value: {
                     L: [{ S: mid }],
@@ -435,39 +435,69 @@ export const likeTweet = catchAsync(
   }
 );
 
-export const retweetTweet = async (req: Request, res: Response) => {
-  const token = req.headers.authorization as string;
-  const user_id = (await getUserDetails(token)).data.id;
-  const tweet_id = req.body.tweet_id;
+export const retweetTweet = catchAsync(
+  async (req: Request & { user: any }, res: Response, next: NextFunction) => {
+    try {
+      const token = req.headers.authorization;
+      const { id: user_id, mid } = req.user.data;
+      const tweet_id = req.params.tid;
 
-  const request = https.request(
-    `https://api.twitter.com/2/users/${user_id}/retweets`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    },
-    (resp) => {
-      let data = "";
-      resp.on("data", (chunk) => {
-        data += chunk.toString();
-      });
-      resp.on("error", (err) => {
-        console.error(err);
-      });
-      resp.on("end", () => {
-        res.json({
-          status: true,
-          data: JSON.parse(data),
-        });
-      });
+      const request = https.request(
+        `https://api.twitter.com/2/users/${user_id}/retweets`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+        (resp) => {
+          let data: any = "";
+          resp.on("data", (chunk) => {
+            data += chunk.toString();
+          });
+          resp.on("error", (err) => {
+            console.error(err);
+          });
+          resp.on("end", () => {
+            data = JSON.parse(data);
+            if (data.error) {
+              return next(new AppError(data.error, 503));
+            }
+
+            // adding task record to DB
+            const updateTweetParams: AWS.DynamoDB.UpdateItemInput = {
+              Key: {
+                id: { S: tweet_id },
+              },
+              AttributeUpdates: {
+                acted_by: {
+                  Action: "ADD",
+                  Value: {
+                    L: [{ S: mid }],
+                  },
+                },
+              },
+              TableName: "TWeets",
+            };
+
+            dynamodb.updateItem(updateTweetParams, (err, data) => {
+              if (err) return next(new AppError(err.message, 501));
+              res.json({
+                status: true,
+                message: "Tweet liked",
+              });
+            });
+          });
+        }
+      );
+      request.write(JSON.stringify({ tweet_id }));
+      request.end();
+    } catch (error) {
+      return next(new AppError(error.message, 501));
     }
-  );
-  request.write(JSON.stringify({ tweet_id }));
-  request.end();
-};
+  }
+);
 
 export const replyToTweet = async (req: Request, res: Response) => {
   const token = req.headers.authorization as string;
