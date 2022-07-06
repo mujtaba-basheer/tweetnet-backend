@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
-const morgan = require("morgan");
 const dotenv_1 = require("dotenv");
 const cors = require("cors");
 const index_1 = require("./routes/index");
@@ -11,8 +10,10 @@ const error_js_1 = require("./middleware/error.js");
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
-if (process.env.NODE_ENV === "development")
+if (process.env.NODE_ENV === "development") {
+    const morgan = require("morgan");
     app.use(morgan("dev"));
+}
 app.use("/api/auth", index_1.authRouter);
 app.use("/api/user", index_1.userRouter);
 app.use("/api/webhook", index_1.webhookRouter);
