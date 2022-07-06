@@ -49,7 +49,7 @@ exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
     const token = req.headers.authorization;
     const user_id = req.user.data.id;
     const user = req.user.data;
-    const request = https.request(`https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=created_at,author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url`, {
+    const request = https.request(`https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&tweet.fields=created_at`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`,
