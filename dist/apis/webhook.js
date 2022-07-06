@@ -19,6 +19,7 @@ const dynamodb = new AWS.DynamoDB({
 const memberAdded = async (req, res, next) => {
     try {
         const user = req.body;
+        console.log(JSON.stringify(user));
         const { id, email, membership, profile, created_at } = user;
         const last_posted = new Date().toISOString();
         const usernames = [profile["twitter-handle"]];
@@ -27,6 +28,7 @@ const memberAdded = async (req, res, next) => {
             usernames.push(profile["twitter-handle-second"]);
             usernames.push(profile["twitter-handle-third"]);
         }
+        console.log("\n" + JSON.stringify(usernames));
         const params = {
             Item: {
                 id: { S: id },

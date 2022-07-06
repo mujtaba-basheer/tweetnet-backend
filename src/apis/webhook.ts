@@ -52,6 +52,7 @@ export const memberAdded = async (
 ) => {
   try {
     const user = req.body as User;
+    console.log(JSON.stringify(user));
 
     const { id, email, membership, profile, created_at } = user;
     const last_posted = new Date().toISOString();
@@ -62,6 +63,7 @@ export const memberAdded = async (
       usernames.push(profile["twitter-handle-second"]);
       usernames.push(profile["twitter-handle-third"]);
     }
+    console.log("\n" + JSON.stringify(usernames));
 
     const params: AWS.DynamoDB.PutItemInput = {
       Item: {
