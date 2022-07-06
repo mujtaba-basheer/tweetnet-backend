@@ -16,7 +16,7 @@ export const getUserDetails: (token: string) => Promise<UserInfo> = (
 ) => {
   return new Promise((res, rej) => {
     const request = https.request(
-      "https://api.twitter.com/2/users/me",
+      "https://api.twitter.com/2/users/me?user.fields=profile_image_url,name,username",
       {
         method: "GET",
         headers: {

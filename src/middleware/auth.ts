@@ -12,11 +12,15 @@ export const protect = catchAsync(
         const unparsed_token = bearerToken.split(" ")[1];
         let [mid, token] = unparsed_token.split(".");
         token = decrypt(token);
-        const user = await getUserDetails(token);
-        req.headers.authorization = token;
-        user.data.mid = mid;
-        req.user = user;
-        next();
+        try {
+          const user = await getUserDetails(token);
+          req.headers.authorization = token;
+          user.data.mid = mid;
+          req.user = user;
+          next();
+        } catch (error) {
+          throw new AppError("Token Invalid or Expired", 403);
+        }
       } else throw new Error("Unauthorized");
     } catch (error) {
       return next(new AppError(error.message, error.statusCode || 401));

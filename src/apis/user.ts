@@ -25,6 +25,7 @@ type UserInfo = {
     name: string;
     username: string;
     mid: string;
+    profile_image_url: string;
   };
   title?: string;
 };
@@ -111,9 +112,10 @@ export const getMyTweets = catchAsync(
   ) => {
     const token = req.headers.authorization as string;
     const user_id = req.user.data.id;
+    const user = req.user.data;
 
     const request = https.request(
-      `https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url`,
+      `https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=created_at,author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url`,
       {
         method: "GET",
         headers: {
@@ -137,11 +139,6 @@ export const getMyTweets = catchAsync(
           const { data: tweets, includes, meta } = tweeetsResp;
 
           for (const tweet of tweets) {
-            const { author_id } = tweet;
-            tweet.author_details = includes.users.find(
-              ({ id }) => id === author_id
-            );
-
             if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
               for (const media_key of tweet.attachments.media_keys) {
                 const media = includes.media.find(
@@ -165,7 +162,17 @@ export const getMyTweets = catchAsync(
 
           res.json({
             status: true,
-            data: { data: tweeetsResp.data, meta },
+            data: {
+              data: {
+                author_details: {
+                  name: user.name,
+                  username: user.username,
+                  profile_image_url: user.profile_image_url,
+                },
+                tweets: tweeetsResp.data,
+              },
+              meta,
+            },
           });
         });
       }
