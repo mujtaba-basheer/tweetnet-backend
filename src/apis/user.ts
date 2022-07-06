@@ -59,6 +59,10 @@ type TweetsResp = {
       media_keys: string[];
     };
     attachement_urls: string[];
+    created_at: string & {
+      date: string;
+      time: string;
+    };
   }[];
   includes: {
     media: MediaDetail[];
@@ -139,6 +143,21 @@ export const getMyTweets = catchAsync(
           const { data: tweets, includes, meta } = tweeetsResp;
 
           for (const tweet of tweets) {
+            const d = new Date(`${tweet.created_at}`);
+            tweet.created_at = { date: "", time: "" } as
+              | string & { date: string; time: string };
+            const dateArr = d
+              .toLocaleDateString(undefined, {
+                dateStyle: "medium",
+              })
+              .split("-");
+            tweet.created_at.date = `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`;
+            tweet.created_at.time = d
+              .toLocaleTimeString(undefined, {
+                timeStyle: "short",
+                hour12: true,
+              })
+              .toUpperCase();
             if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
               for (const media_key of tweet.attachments.media_keys) {
                 const media = includes.media.find(

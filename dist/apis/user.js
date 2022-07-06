@@ -68,6 +68,20 @@ exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
                 return next(new app_error_1.default(tweeetsResp.title, resp.statusCode));
             const { data: tweets, includes, meta } = tweeetsResp;
             for (const tweet of tweets) {
+                const d = new Date(`${tweet.created_at}`);
+                tweet.created_at = { date: "", time: "" };
+                const dateArr = d
+                    .toLocaleDateString(undefined, {
+                    dateStyle: "medium",
+                })
+                    .split("-");
+                tweet.created_at.date = `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`;
+                tweet.created_at.time = d
+                    .toLocaleTimeString(undefined, {
+                    timeStyle: "short",
+                    hour12: true,
+                })
+                    .toUpperCase();
                 if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
                     for (const media_key of tweet.attachments.media_keys) {
                         const media = includes.media.find((x) => x.media_key === media_key);
