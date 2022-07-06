@@ -84,8 +84,8 @@ export const getToken = catchAsync(
         };
       };
 
-      const { code, mid } = req.body;
-      const token = await createToken(code);
+      const { code, state, mid } = req.body;
+      const token = await createToken(code, state);
       const t_user = await getUserDetails(decrypt(token.access_token));
 
       // getting user from db
