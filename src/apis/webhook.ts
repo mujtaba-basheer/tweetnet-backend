@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import AppError from "../utils/app-error";
+import limits from "../data/subscription";
 import { config } from "dotenv";
 import * as AWS from "aws-sdk";
 config();
@@ -21,6 +22,8 @@ type User = {
   name: string;
   profile: {
     "twitter-handle": string;
+    "twitter-handle-second"?: string;
+    "twitter-handle-third"?: string;
     name: string;
   };
   membership: {
@@ -49,10 +52,17 @@ export const memberAdded = async (
 ) => {
   try {
     const user = req.body as User;
-    console.log(JSON.stringify(user));
 
     const { id, email, membership, profile, created_at } = user;
     const last_posted = new Date().toISOString();
+
+    const usernames: string[] = [profile["twitter-handle"]];
+    const sub_details = limits.find((x) => x.sid === membership.subscribed_to);
+    if (sub_details && sub_details.usernames === 3) {
+      usernames.push(profile["twitter-handle-second"]);
+      usernames.push(profile["twitter-handle-third"]);
+    }
+
     const params: AWS.DynamoDB.PutItemInput = {
       Item: {
         id: { S: id },
@@ -60,7 +70,7 @@ export const memberAdded = async (
         profile: {
           M: {
             usernames: {
-              L: [{ S: profile["twitter-handle"].substring(1) }],
+              L: usernames.map((u) => ({ S: u.replace("@", "") })),
             },
           },
         },

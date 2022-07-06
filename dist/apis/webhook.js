@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.memberDeleted = exports.memberAdded = void 0;
 const app_error_1 = require("../utils/app-error");
+const subscription_1 = require("../data/subscription");
 const dotenv_1 = require("dotenv");
 const AWS = require("aws-sdk");
 (0, dotenv_1.config)();
@@ -18,9 +19,14 @@ const dynamodb = new AWS.DynamoDB({
 const memberAdded = async (req, res, next) => {
     try {
         const user = req.body;
-        console.log(JSON.stringify(user));
         const { id, email, membership, profile, created_at } = user;
         const last_posted = new Date().toISOString();
+        const usernames = [profile["twitter-handle"]];
+        const sub_details = subscription_1.default.find((x) => x.sid === membership.subscribed_to);
+        if (sub_details && sub_details.usernames === 3) {
+            usernames.push(profile["twitter-handle-second"]);
+            usernames.push(profile["twitter-handle-third"]);
+        }
         const params = {
             Item: {
                 id: { S: id },
@@ -28,7 +34,7 @@ const memberAdded = async (req, res, next) => {
                 profile: {
                     M: {
                         usernames: {
-                            L: [{ S: profile["twitter-handle"].substring(1) }],
+                            L: usernames.map((u) => ({ S: u.replace("@", "") })),
                         },
                     },
                 },
