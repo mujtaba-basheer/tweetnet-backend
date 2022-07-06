@@ -48,7 +48,8 @@ exports.getFollows = getFollows;
 exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
     const token = req.headers.authorization;
     const user_id = req.user.data.id;
-    const request = https.request(`https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url`, {
+    const user = req.user.data;
+    const request = https.request(`https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=created_at,author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`,
@@ -67,8 +68,6 @@ exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
                 return next(new app_error_1.default(tweeetsResp.title, resp.statusCode));
             const { data: tweets, includes, meta } = tweeetsResp;
             for (const tweet of tweets) {
-                const { author_id } = tweet;
-                tweet.author_details = includes.users.find(({ id }) => id === author_id);
                 if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
                     for (const media_key of tweet.attachments.media_keys) {
                         const media = includes.media.find((x) => x.media_key === media_key);
@@ -92,7 +91,14 @@ exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
             }
             res.json({
                 status: true,
-                data: { data: tweeetsResp.data, meta },
+                data: {
+                    author_details: {
+                        name: user.name,
+                        username: user.username,
+                        profile_image_url: user.profile_image_url,
+                    },
+                    tweets: tweeetsResp.data,
+                },
             });
         });
     });

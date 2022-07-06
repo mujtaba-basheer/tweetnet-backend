@@ -163,15 +163,12 @@ export const getMyTweets = catchAsync(
           res.json({
             status: true,
             data: {
-              data: {
-                author_details: {
-                  name: user.name,
-                  username: user.username,
-                  profile_image_url: user.profile_image_url,
-                },
-                tweets: tweeetsResp.data,
+              author_details: {
+                name: user.name,
+                username: user.username,
+                profile_image_url: user.profile_image_url,
               },
-              meta,
+              tweets: tweeetsResp.data,
             },
           });
         });

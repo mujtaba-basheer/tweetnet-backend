@@ -12,11 +12,16 @@ exports.protect = (0, catch_async_1.default)(async (req, res, next) => {
             const unparsed_token = bearerToken.split(" ")[1];
             let [mid, token] = unparsed_token.split(".");
             token = (0, auth_1.decrypt)(token);
-            const user = await (0, user_1.getUserDetails)(token);
-            req.headers.authorization = token;
-            user.data.mid = mid;
-            req.user = user;
-            next();
+            try {
+                const user = await (0, user_1.getUserDetails)(token);
+                req.headers.authorization = token;
+                user.data.mid = mid;
+                req.user = user;
+                next();
+            }
+            catch (error) {
+                throw new app_error_1.default("Token Invalid or Expired", 403);
+            }
         }
         else
             throw new Error("Unauthorized");

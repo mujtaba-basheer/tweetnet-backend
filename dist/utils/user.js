@@ -5,7 +5,7 @@ const https = require("https");
 const app_error_1 = require("./app-error");
 const getUserDetails = (token) => {
     return new Promise((res, rej) => {
-        const request = https.request("https://api.twitter.com/2/users/me", {
+        const request = https.request("https://api.twitter.com/2/users/me?user.fields=profile_image_url,name,username", {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${token}`,
