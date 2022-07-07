@@ -66,7 +66,7 @@ exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
             const tweeetsResp = JSON.parse(data);
             if (resp.statusCode !== 200)
                 return next(new app_error_1.default(tweeetsResp.title, resp.statusCode));
-            const { data: tweets, includes, meta } = tweeetsResp;
+            const { data: tweets, includes } = tweeetsResp;
             for (const tweet of tweets) {
                 const d = new Date(`${tweet.created_at}`);
                 tweet.created_at = { date: "", time: "" };
@@ -120,103 +120,121 @@ exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
 });
 exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
     try {
-        const { ids, task } = req.body;
-        if (["like", "retweet", "reply"].includes(task)) {
-            const { mid } = req.user.data;
-            // getting user object from DB
-            const getUserParams = {
-                Key: { id: { S: mid } },
-                TableName: "Users",
-            };
-            dynamodb.getItem(getUserParams, (err, data) => {
-                if (err || !data.Item) {
-                    return next(new app_error_1.default(err.message, 503));
-                }
-                const user = data.Item;
-                let { count: { N: count }, last_posted: { S: last_posted }, } = user.stats.M[task].M;
+        const forwardTweet = req.body;
+        const created_at = new Date().valueOf();
+        const forwardTweets = [];
+        const { tasks, id } = forwardTweet;
+        for (const task of tasks) {
+            if (["like", "retweet", "reply"].includes(task)) {
+                const tweetObj = {
+                    id: `${id}.${created_at}.${task}`,
+                    task,
+                };
+                forwardTweets.push(tweetObj);
+            }
+            else
+                return next(new app_error_1.default("Bad Request", 400));
+        }
+        const { mid } = req.user.data;
+        // getting user object from DB
+        const getUserParams = {
+            Key: { id: { S: mid } },
+            TableName: "Users",
+        };
+        dynamodb.getItem(getUserParams, (err, data) => {
+            if (err || !data.Item) {
+                return next(new app_error_1.default(err.message, 503));
+            }
+            const user = data.Item;
+            const created_at = new Date();
+            const putTweets = [];
+            const newStats = Object.assign({}, user.stats);
+            let message = "";
+            for (const tweet of forwardTweets) {
+                const { task } = tweet;
+                let { count: { N: count }, last_posted: { S: last_posted }, } = newStats.M[task].M;
                 let c = +count;
                 const sid = user.membership.M.subscribed_to.S;
-                const n = ids.length;
+                const n = 1;
                 const limit_o = subscription_1.default.find((x) => x.sid === sid);
                 // checking daily limits
                 if (limit_o) {
                     const limit = limit_o.limit[task];
-                    const created_at = new Date();
                     const created_at_date = created_at.toISOString().substring(0, 10);
                     const last_posted_date = last_posted.substring(0, 10);
                     try {
                         if (last_posted_date < created_at_date) {
                             if (n <= limit) {
-                                c = n;
-                                last_posted = created_at.toISOString();
+                                newStats.M[task].M.count = { N: n + "" };
+                                newStats.M[task].M.last_posted = {
+                                    S: created_at.toISOString(),
+                                };
                             }
                             else
-                                throw new Error("Limit Exceeded");
+                                throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
                         }
                         else if (n + c <= limit) {
-                            last_posted = created_at.toISOString();
-                            c += n;
+                            newStats.M[task].M.count = { N: c + n + "" };
+                            newStats.M[task].M.last_posted = {
+                                S: created_at.toISOString(),
+                            };
                         }
                         else
-                            throw new Error("Limit Exceeded");
-                        // adding tweets to DB
-                        const putTweetsParams = {
-                            RequestItems: {
-                                Tweets: ids.map((id) => ({
-                                    PutRequest: {
-                                        Item: {
-                                            id: { S: id },
-                                            task: { S: task },
-                                            created_by: { S: mid },
-                                            acted_by: { L: [] },
-                                            created_at: { S: created_at.toISOString() },
-                                        },
-                                    },
-                                })),
-                            },
-                        };
-                        dynamodb.batchWriteItem(putTweetsParams, (err, data) => {
-                            if (err)
-                                return next(new app_error_1.default(err.message, 503));
-                            // updating user data in DB
-                            const updateUserParams = {
-                                Key: { id: { S: mid } },
-                                UpdateExpression: "SET #stats=:stats",
-                                ExpressionAttributeNames: {
-                                    "#stats": "stats",
-                                },
-                                ExpressionAttributeValues: {
-                                    ":stats": {
-                                        M: Object.assign(Object.assign({}, user.stats.M), { [task]: {
-                                                M: {
-                                                    count: { N: c + "" },
-                                                    last_posted: { S: last_posted },
-                                                },
-                                            } }),
-                                    },
-                                },
-                                TableName: "Users",
-                            };
-                            dynamodb.updateItem(updateUserParams, (err, data) => {
-                                if (err)
-                                    return next(new app_error_1.default(err.message, 503));
-                                res.json({
-                                    status: true,
-                                    message: "Tweets forwarded successfully",
-                                });
-                            });
-                        });
+                            throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
+                        putTweets.push(tweet);
                     }
                     catch (error) {
-                        return next(new app_error_1.default(error.message, 400));
+                        message = error.message;
+                        continue;
                     }
                 }
                 else
                     return next(new app_error_1.default("Subscription not found", 404));
-            });
-        }
-        else
-            return next(new app_error_1.default("Bad Request", 400));
+            }
+            if (putTweets.length > 0) {
+                const putTweetsParams = {
+                    RequestItems: {
+                        Tweets: putTweets.map((t) => ({
+                            PutRequest: {
+                                Item: {
+                                    id: { S: t.id },
+                                    task: { S: t.task },
+                                    created_by: { S: mid },
+                                    acted_by: { L: [] },
+                                    created_at: { S: created_at.toISOString() },
+                                },
+                            },
+                        })),
+                    },
+                };
+                dynamodb.batchWriteItem(putTweetsParams, (err, data) => {
+                    if (err)
+                        return next(new app_error_1.default(err.message, 503));
+                    // updating user data in DB
+                    const updateUserParams = {
+                        Key: { id: { S: mid } },
+                        UpdateExpression: "SET #stats=:stats",
+                        ExpressionAttributeNames: {
+                            "#stats": "stats",
+                        },
+                        ExpressionAttributeValues: {
+                            ":stats": newStats,
+                        },
+                        TableName: "Users",
+                    };
+                    dynamodb.updateItem(updateUserParams, (err, data) => {
+                        if (err)
+                            return next(new app_error_1.default(err.message, 503));
+                        res.json({
+                            status: true,
+                            data: message || "Tweet(s) forwarded successfully",
+                        });
+                    });
+                });
+            }
+            else
+                return next(new app_error_1.default(message, 400));
+        });
     }
     catch (error) {
         return next(new app_error_1.default(error.message, 501));
