@@ -8,6 +8,8 @@ const userRouter = (0, express_1.Router)();
 userRouter.get("/follows", auth_1.protect, user_1.getFollows);
 // my tweets
 userRouter.get("/my-tweets", auth_1.protect, user_1.getMyTweets);
+// tweets by task
+userRouter.get("/tweets/:task", auth_1.protect, user_1.getTweetsByTask);
 // forward tweets
 userRouter.post("/forward-tweets", auth_1.protect, user_1.forwardTweets);
 // like

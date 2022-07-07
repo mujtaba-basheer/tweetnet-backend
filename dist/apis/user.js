@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.replyToTweet = exports.retweetTweet = exports.likeTweet = exports.getTweets = exports.forwardTweets = exports.getMyTweets = exports.getFollows = void 0;
+exports.replyToTweet = exports.retweetTweet = exports.likeTweet = exports.getTweetsByTask = exports.getTweets = exports.forwardTweets = exports.getMyTweets = exports.getFollows = void 0;
 const dotenv_1 = require("dotenv");
 const https = require("https");
 const app_error_1 = require("../utils/app-error");
@@ -292,6 +292,105 @@ const getTweets = async (req, res) => {
     request.end();
 };
 exports.getTweets = getTweets;
+const getTweetsByTask = async (req, res, next) => {
+    const token = req.headers.authorization;
+    const { id, mid } = req.user.data;
+    const { task } = req.params;
+    try {
+        // getting tweets from DB
+        const getTweetsParams = {
+            FilterExpression: "#T = :T AND #CB <> :CB AND NOT contains(#AB, :CB)",
+            ExpressionAttributeNames: {
+                "#CB": "created_by",
+                "#AB": "acted_by",
+                "#ID": "id",
+                "#T": "task",
+            },
+            ExpressionAttributeValues: {
+                ":CB": {
+                    S: mid,
+                },
+                ":T": {
+                    S: task,
+                },
+            },
+            ProjectionExpression: "#ID",
+            Limit: 100,
+            TableName: "Tweets",
+        };
+        dynamodb.scan(getTweetsParams, (err, data) => {
+            if (err)
+                return next(new app_error_1.default(err.message, 503));
+            const ids = data.Items.map((x) => x.id.S);
+            const tweet_ids = ids.map((x) => x.split(".")[0]);
+            const idMap = {};
+            for (let i = 0; i < ids.length; i++)
+                idMap[tweet_ids[i]] = ids[i];
+            const request = https.request(`https://api.twitter.com/2/tweets?ids=${tweet_ids.join(",")}&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }, (resp) => {
+                let data = "";
+                resp.on("data", (chunk) => {
+                    data += chunk.toString();
+                });
+                resp.on("error", (err) => {
+                    return next(new app_error_1.default(err.message, 503));
+                });
+                resp.on("end", () => {
+                    const tweeetsResp = JSON.parse(data);
+                    if (resp.statusCode !== 200)
+                        return next(new app_error_1.default(tweeetsResp.title, 503));
+                    const { data: tweets, includes, meta } = tweeetsResp;
+                    const authorMap = {};
+                    const attachementsMap = {};
+                    for (const user of includes.users) {
+                        authorMap[user.id] = user;
+                    }
+                    for (const media of includes.media) {
+                        attachementsMap[media.media_key] = media;
+                    }
+                    for (const tweet of tweets) {
+                        tweet.author_details = authorMap[tweet.author_id];
+                        if (tweet.attachments &&
+                            tweet.attachments.media_keys.length > 0) {
+                            for (const media_key of tweet.attachments.media_keys) {
+                                const media = attachementsMap[media_key];
+                                let url;
+                                if (media) {
+                                    if (media.type === "photo")
+                                        url = media.url;
+                                    else
+                                        url = media.preview_image_url;
+                                    if (!tweet.attachement_urls) {
+                                        tweet.attachement_urls = [url];
+                                    }
+                                    else
+                                        tweet.attachement_urls.push(url);
+                                }
+                            }
+                        }
+                        tweet.id = idMap[tweet.id];
+                    }
+                    for (const tweet of tweets) {
+                        delete tweet.attachments;
+                    }
+                    res.json({
+                        status: true,
+                        data: { data: tweeetsResp.data, meta },
+                    });
+                });
+            });
+            request.end();
+        });
+    }
+    catch (error) {
+        return next(new app_error_1.default(error.message, 501));
+    }
+};
+exports.getTweetsByTask = getTweetsByTask;
 exports.likeTweet = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const token = req.headers.authorization;

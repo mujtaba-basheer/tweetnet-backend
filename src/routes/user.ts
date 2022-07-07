@@ -3,6 +3,7 @@ import {
   forwardTweets,
   getFollows,
   getMyTweets,
+  getTweetsByTask,
   likeTweet,
   replyToTweet,
   retweetTweet,
@@ -16,6 +17,9 @@ userRouter.get("/follows", protect, getFollows);
 
 // my tweets
 userRouter.get("/my-tweets", protect, getMyTweets);
+
+// tweets by task
+userRouter.get("/tweets/:task", protect, getTweetsByTask);
 
 // forward tweets
 userRouter.post("/forward-tweets", protect, forwardTweets);
