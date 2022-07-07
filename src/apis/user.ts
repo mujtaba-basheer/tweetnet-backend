@@ -264,7 +264,8 @@ export const forwardTweets = catchAsync(
         const created_at = new Date();
         const putTweets: FormattedForwardTweets = [];
         const newStats = Object.assign({}, user.stats);
-        let message: string = "";
+        const messages: { tag: string; status: boolean; message: string }[] =
+          [];
         for (const tweet of forwardTweets) {
           const { task } = tweet;
           let {
@@ -300,8 +301,17 @@ export const forwardTweets = catchAsync(
                 throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
 
               putTweets.push(tweet);
+              messages.push({
+                tag: task,
+                status: true,
+                message: "Tweet forwarded successfully",
+              });
             } catch (error) {
-              message = error.message;
+              messages.push({
+                tag: task,
+                status: false,
+                message: error.message,
+              });
               continue;
             }
           } else return next(new AppError("Subscription not found", 404));
@@ -345,11 +355,15 @@ export const forwardTweets = catchAsync(
 
               res.json({
                 status: true,
-                data: message || "Tweet(s) forwarded successfully",
+                data: messages,
               });
             });
           });
-        } else return next(new AppError(message, 400));
+        } else
+          return res.json({
+            status: true,
+            data: messages,
+          });
       });
     } catch (error) {
       return next(new AppError(error.message, 501));

@@ -149,7 +149,7 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
             const created_at = new Date();
             const putTweets = [];
             const newStats = Object.assign({}, user.stats);
-            let message = "";
+            const messages = [];
             for (const tweet of forwardTweets) {
                 const { task } = tweet;
                 let { count: { N: count }, last_posted: { S: last_posted }, } = newStats.M[task].M;
@@ -182,9 +182,18 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                         else
                             throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
                         putTweets.push(tweet);
+                        messages.push({
+                            tag: task,
+                            status: true,
+                            message: "Tweet forwarded successfully",
+                        });
                     }
                     catch (error) {
-                        message = error.message;
+                        messages.push({
+                            tag: task,
+                            status: false,
+                            message: error.message,
+                        });
                         continue;
                     }
                 }
@@ -227,13 +236,16 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                             return next(new app_error_1.default(err.message, 503));
                         res.json({
                             status: true,
-                            data: message || "Tweet(s) forwarded successfully",
+                            data: messages,
                         });
                     });
                 });
             }
             else
-                return next(new app_error_1.default(message, 400));
+                return res.json({
+                    status: true,
+                    data: messages,
+                });
         });
     }
     catch (error) {
