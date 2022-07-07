@@ -294,7 +294,7 @@ const getTweets = async (req, res) => {
 exports.getTweets = getTweets;
 const getTweetsByTask = async (req, res, next) => {
     const token = req.headers.authorization;
-    const { id, mid } = req.user.data;
+    const { mid } = req.user.data;
     const { task } = req.params;
     try {
         // getting tweets from DB
@@ -326,7 +326,7 @@ const getTweetsByTask = async (req, res, next) => {
             const idMap = {};
             for (let i = 0; i < ids.length; i++)
                 idMap[tweet_ids[i]] = ids[i];
-            const request = https.request(`https://api.twitter.com/2/tweets?ids=${tweet_ids.join(",")}&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url`, {
+            const request = https.request(`https://api.twitter.com/2/tweets?ids=${tweet_ids.join(",")}&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url&tweet.fields=created_at`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -353,6 +353,20 @@ const getTweetsByTask = async (req, res, next) => {
                         attachementsMap[media.media_key] = media;
                     }
                     for (const tweet of tweets) {
+                        const d = new Date(`${tweet.created_at}`);
+                        tweet.created_at = { date: "", time: "" };
+                        const dateArr = d
+                            .toLocaleDateString(undefined, {
+                            dateStyle: "medium",
+                        })
+                            .split("-");
+                        tweet.created_at.date = `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`;
+                        tweet.created_at.time = d
+                            .toLocaleTimeString(undefined, {
+                            timeStyle: "short",
+                            hour12: true,
+                        })
+                            .toUpperCase();
                         tweet.author_details = authorMap[tweet.author_id];
                         if (tweet.attachments &&
                             tweet.attachments.media_keys.length > 0) {
