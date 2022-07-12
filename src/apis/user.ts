@@ -151,7 +151,11 @@ export const getMyTweets = catchAsync(
                 dateStyle: "medium",
               })
               .split("-");
-            tweet.created_at.date = `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`;
+            tweet.created_at.date =
+              `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
+                /undefined/g,
+                ""
+              );
             tweet.created_at.time = d
               .toLocaleTimeString(undefined, {
                 timeStyle: "short",
