@@ -75,7 +75,8 @@ exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
                     dateStyle: "medium",
                 })
                     .split("-");
-                tweet.created_at.date = `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`;
+                tweet.created_at.date =
+                    `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(/undefined/g, "");
                 tweet.created_at.time = d
                     .toLocaleTimeString(undefined, {
                     timeStyle: "short",
@@ -355,7 +356,7 @@ const getTweetsByTask = async (req, res, next) => {
                     const tweeetsResp = JSON.parse(data);
                     if (resp.statusCode !== 200)
                         return next(new app_error_1.default(tweeetsResp.title, 503));
-                    const { data: tweets, includes, meta } = tweeetsResp;
+                    const { data: tweets, includes } = tweeetsResp;
                     const authorMap = {};
                     const attachementsMap = {};
                     for (const user of includes.users) {
@@ -405,7 +406,7 @@ const getTweetsByTask = async (req, res, next) => {
                     }
                     res.json({
                         status: true,
-                        data: { data: tweeetsResp.data, meta },
+                        data: tweeetsResp.data,
                     });
                 });
             });

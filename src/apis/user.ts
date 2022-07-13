@@ -499,7 +499,7 @@ export const getTweetsByTask = async (
             if (resp.statusCode !== 200)
               return next(new AppError(tweeetsResp.title, 503));
 
-            const { data: tweets, includes, meta } = tweeetsResp;
+            const { data: tweets, includes } = tweeetsResp;
             const authorMap = {};
             const attachementsMap = {};
 
@@ -555,7 +555,7 @@ export const getTweetsByTask = async (
 
             res.json({
               status: true,
-              data: { data: tweeetsResp.data, meta },
+              data: tweeetsResp.data,
             });
           });
         }
