@@ -422,7 +422,8 @@ exports.likeTweet = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const token = req.headers.authorization;
         const { id: user_id, mid } = req.user.data;
-        const tweet_id = req.params.tid;
+        const id = req.params.id;
+        const tid = id.split(".")[0];
         const request = https.request(`https://api.twitter.com/2/users/${user_id}/likes`, {
             method: "POST",
             headers: {
@@ -445,7 +446,7 @@ exports.likeTweet = (0, catch_async_1.default)(async (req, res, next) => {
                 // adding task record to DB
                 const updateTweetParams = {
                     Key: {
-                        id: { S: tweet_id },
+                        id: { S: id },
                     },
                     AttributeUpdates: {
                         acted_by: {
@@ -467,7 +468,7 @@ exports.likeTweet = (0, catch_async_1.default)(async (req, res, next) => {
                 });
             });
         });
-        request.write(JSON.stringify({ tweet_id }));
+        request.write(JSON.stringify({ tweet_id: tid }));
         request.end();
     }
     catch (error) {
@@ -478,7 +479,8 @@ exports.retweetTweet = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const token = req.headers.authorization;
         const { id: user_id, mid } = req.user.data;
-        const tweet_id = req.params.tid;
+        const id = req.params.id;
+        const tid = id.split(".")[0];
         const request = https.request(`https://api.twitter.com/2/users/${user_id}/retweets`, {
             method: "POST",
             headers: {
@@ -501,7 +503,7 @@ exports.retweetTweet = (0, catch_async_1.default)(async (req, res, next) => {
                 // adding task record to DB
                 const updateTweetParams = {
                     Key: {
-                        id: { S: tweet_id },
+                        id: { S: id },
                     },
                     AttributeUpdates: {
                         acted_by: {
@@ -523,7 +525,7 @@ exports.retweetTweet = (0, catch_async_1.default)(async (req, res, next) => {
                 });
             });
         });
-        request.write(JSON.stringify({ tweet_id }));
+        request.write(JSON.stringify({ tweet_id: tid }));
         request.end();
     }
     catch (error) {
@@ -534,12 +536,13 @@ exports.replyToTweet = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const token = req.headers.authorization;
         const { mid } = req.user.data;
-        const tweet_id = req.params.tid;
+        const id = req.params.id;
+        const tid = id.split(".")[0];
         const { text } = req.body;
         const body = {
             text,
             reply: {
-                in_reply_to_tweet_id: tweet_id,
+                in_reply_to_tweet_id: tid,
             },
         };
         const request = https.request("https://api.twitter.com/2/tweets", {
@@ -564,7 +567,7 @@ exports.replyToTweet = (0, catch_async_1.default)(async (req, res, next) => {
                 // adding task record to DB
                 const updateTweetParams = {
                     Key: {
-                        id: { S: tweet_id },
+                        id: { S: id },
                     },
                     AttributeUpdates: {
                         acted_by: {

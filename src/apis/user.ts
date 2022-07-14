@@ -572,7 +572,8 @@ export const likeTweet = catchAsync(
     try {
       const token = req.headers.authorization;
       const { id: user_id, mid } = req.user.data;
-      const tweet_id = req.params.tid;
+      const id = req.params.id;
+      const tid = id.split(".")[0];
 
       const request = https.request(
         `https://api.twitter.com/2/users/${user_id}/likes`,
@@ -600,7 +601,7 @@ export const likeTweet = catchAsync(
             // adding task record to DB
             const updateTweetParams: AWS.DynamoDB.UpdateItemInput = {
               Key: {
-                id: { S: tweet_id },
+                id: { S: id },
               },
               AttributeUpdates: {
                 acted_by: {
@@ -623,7 +624,7 @@ export const likeTweet = catchAsync(
           });
         }
       );
-      request.write(JSON.stringify({ tweet_id }));
+      request.write(JSON.stringify({ tweet_id: tid }));
       request.end();
     } catch (error) {
       return next(new AppError(error.message, 501));
@@ -636,7 +637,8 @@ export const retweetTweet = catchAsync(
     try {
       const token = req.headers.authorization;
       const { id: user_id, mid } = req.user.data;
-      const tweet_id = req.params.tid;
+      const id = req.params.id;
+      const tid = id.split(".")[0];
 
       const request = https.request(
         `https://api.twitter.com/2/users/${user_id}/retweets`,
@@ -664,7 +666,7 @@ export const retweetTweet = catchAsync(
             // adding task record to DB
             const updateTweetParams: AWS.DynamoDB.UpdateItemInput = {
               Key: {
-                id: { S: tweet_id },
+                id: { S: id },
               },
               AttributeUpdates: {
                 acted_by: {
@@ -687,7 +689,7 @@ export const retweetTweet = catchAsync(
           });
         }
       );
-      request.write(JSON.stringify({ tweet_id }));
+      request.write(JSON.stringify({ tweet_id: tid }));
       request.end();
     } catch (error) {
       return next(new AppError(error.message, 501));
@@ -700,13 +702,14 @@ export const replyToTweet = catchAsync(
     try {
       const token = req.headers.authorization;
       const { mid } = req.user.data;
-      const tweet_id = req.params.tid;
+      const id = req.params.id;
+      const tid = id.split(".")[0];
       const { text } = req.body;
 
       const body = {
         text,
         reply: {
-          in_reply_to_tweet_id: tweet_id,
+          in_reply_to_tweet_id: tid,
         },
       };
 
@@ -736,7 +739,7 @@ export const replyToTweet = catchAsync(
             // adding task record to DB
             const updateTweetParams: AWS.DynamoDB.UpdateItemInput = {
               Key: {
-                id: { S: tweet_id },
+                id: { S: id },
               },
               AttributeUpdates: {
                 acted_by: {
