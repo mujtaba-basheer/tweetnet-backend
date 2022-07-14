@@ -50,9 +50,7 @@ exports.getToken = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const { code, state, mid } = req.body;
         const token = await (0, auth_1.createToken)(code, state);
-        console.log({ token });
         const t_user = await (0, user_1.getUserDetails)((0, auth_1.decrypt)(token.access_token));
-        console.log({ t_user });
         // getting user from db
         const getUserParams = {
             Key: {
