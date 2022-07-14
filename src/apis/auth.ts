@@ -86,7 +86,9 @@ export const getToken = catchAsync(
 
       const { code, state, mid } = req.body;
       const token = await createToken(code, state);
+      console.log({ token });
       const t_user = await getUserDetails(decrypt(token.access_token));
+      console.log({ t_user });
 
       // getting user from db
       const getUserParams: AWS.DynamoDB.GetItemInput = {
