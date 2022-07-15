@@ -506,8 +506,10 @@ export const getTweetsByTask = async (
             for (const user of includes.users) {
               authorMap[user.id] = user;
             }
-            for (const media of includes.media) {
-              attachementsMap[media.media_key] = media;
+            if(includes.media) {
+              for (const media of includes.media) {
+                attachementsMap[media.media_key] = media;
+              }
             }
 
             for (const tweet of tweets) {
