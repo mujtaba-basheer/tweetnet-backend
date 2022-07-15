@@ -362,8 +362,10 @@ const getTweetsByTask = async (req, res, next) => {
                     for (const user of includes.users) {
                         authorMap[user.id] = user;
                     }
-                    for (const media of includes.media) {
-                        attachementsMap[media.media_key] = media;
+                    if (includes.media) {
+                        for (const media of includes.media) {
+                            attachementsMap[media.media_key] = media;
+                        }
                     }
                     for (const tweet of tweets) {
                         const d = new Date(`${tweet.created_at}`);
