@@ -506,7 +506,7 @@ export const getTweetsByTask = async (
             for (const user of includes.users) {
               authorMap[user.id] = user;
             }
-            if(includes.media) {
+            if (includes.media) {
               for (const media of includes.media) {
                 attachementsMap[media.media_key] = media;
               }
@@ -521,7 +521,11 @@ export const getTweetsByTask = async (
                   dateStyle: "medium",
                 })
                 .split("-");
-              tweet.created_at.date = `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`;
+              tweet.created_at.date =
+                `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
+                  /undefined/g,
+                  ""
+                );
               tweet.created_at.time = d
                 .toLocaleTimeString(undefined, {
                   timeStyle: "short",
