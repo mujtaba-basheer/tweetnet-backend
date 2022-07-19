@@ -8,6 +8,7 @@ const index_1 = require("./routes/index");
 const error_js_1 = require("./middleware/error.js");
 (0, dotenv_1.config)();
 const app = express();
+app.options("*", cors());
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 if (process.env.NODE_ENV === "development") {
