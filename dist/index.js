@@ -3,19 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const dotenv_1 = require("dotenv");
 const index_1 = require("./routes/index");
-// importing error handlers
+// importing middleware handlers
 const error_js_1 = require("./middleware/error.js");
+const cors_1 = require("./middleware/cors");
 (0, dotenv_1.config)();
 const app = express();
-// app.options("*", cors());
-// app.use(cors());
-app.use(function (req, res, next) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    next();
-});
+app.options("*", (0, cors_1.default)());
+app.use((0, cors_1.default)());
 app.use(express.json({ limit: "5mb" }));
 if (process.env.NODE_ENV === "development") {
     const morgan = require("morgan");
