@@ -502,144 +502,157 @@ export const getTweetsByTask = async (
       const user = data.Item as unknown as User;
       const sid = user.membership.M.subscribed_to.S;
       const limit_o = limits.find((x) => x.sid === sid);
+      const current_posted = new Date().toISOString();
 
-      if (
-        limit_o.limit.others[task] <= +user.stats.M.others.M[task].M.count.N
-      ) {
-        return res.json({
-          status: true,
-          data: {
-            limit_exceeded: true,
-            tweets: [],
+      if (limit_o) {
+        const l = limit_o.limit.others[task];
+        const newStats = user.stats;
+
+        const {
+          count: { N: count },
+          last_posted: { S: last_posted },
+        } = newStats.M.others.M[task].M;
+        const c = +count;
+
+        const current_date = current_posted.substring(0, 10);
+        const last_date = last_posted.substring(0, 10);
+
+        if (current_date === last_date && c >= l) {
+          return res.json({
+            status: true,
+            data: {
+              limit_exceeded: true,
+              tweets: [],
+            },
+          });
+        }
+
+        // getting tweets from DB
+        const getTweetsParams: AWS.DynamoDB.ScanInput = {
+          FilterExpression: "#T = :T AND #CB <> :CB AND NOT contains(#AB, :CB)",
+          ExpressionAttributeNames: {
+            "#CB": "created_by",
+            "#AB": "acted_by",
+            "#ID": "id",
+            "#T": "task",
           },
-        });
-      }
-
-      // getting tweets from DB
-      const getTweetsParams: AWS.DynamoDB.ScanInput = {
-        FilterExpression: "#T = :T AND #CB <> :CB AND NOT contains(#AB, :CB)",
-        ExpressionAttributeNames: {
-          "#CB": "created_by",
-          "#AB": "acted_by",
-          "#ID": "id",
-          "#T": "task",
-        },
-        ExpressionAttributeValues: {
-          ":CB": {
-            S: mid,
-          },
-          ":T": {
-            S: task,
-          },
-        },
-        ProjectionExpression: "#ID",
-        Limit: 100,
-        TableName: "Tweets",
-      };
-
-      dynamodb.scan(getTweetsParams, (err, data) => {
-        if (err) return next(new AppError(err.message, 503));
-
-        const ids: string[] = data.Items.map((x) => x.id.S);
-        const tweet_ids: string[] = ids.map((x: string) => x.split(".")[0]);
-        const idMap = {};
-        for (let i = 0; i < ids.length; i++) idMap[tweet_ids[i]] = ids[i];
-
-        const request = https.request(
-          `https://api.twitter.com/2/tweets?ids=${tweet_ids.join(
-            ","
-          )}&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url&tweet.fields=created_at`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
+          ExpressionAttributeValues: {
+            ":CB": {
+              S: mid,
+            },
+            ":T": {
+              S: task,
             },
           },
-          (resp) => {
-            let data = "";
-            resp.on("data", (chunk) => {
-              data += chunk.toString();
-            });
-            resp.on("error", (err) => {
-              return next(new AppError(err.message, 503));
-            });
-            resp.on("end", () => {
-              const tweeetsResp: TweetsResp = JSON.parse(data);
-              if (resp.statusCode !== 200)
-                return next(new AppError(tweeetsResp.title, 503));
+          ProjectionExpression: "#ID",
+          Limit: 100,
+          TableName: "Tweets",
+        };
 
-              const { data: tweets, includes } = tweeetsResp;
-              const authorMap = {};
-              const attachementsMap = {};
+        dynamodb.scan(getTweetsParams, (err, data) => {
+          if (err) return next(new AppError(err.message, 503));
 
-              for (const user of includes.users) {
-                authorMap[user.id] = user;
-              }
-              if (includes.media) {
-                for (const media of includes.media) {
-                  attachementsMap[media.media_key] = media;
+          const ids: string[] = data.Items.map((x) => x.id.S);
+          const tweet_ids: string[] = ids.map((x: string) => x.split(".")[0]);
+          const idMap = {};
+          for (let i = 0; i < ids.length; i++) idMap[tweet_ids[i]] = ids[i];
+
+          const request = https.request(
+            `https://api.twitter.com/2/tweets?ids=${tweet_ids.join(
+              ","
+            )}&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url&tweet.fields=created_at`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+            (resp) => {
+              let data = "";
+              resp.on("data", (chunk) => {
+                data += chunk.toString();
+              });
+              resp.on("error", (err) => {
+                return next(new AppError(err.message, 503));
+              });
+              resp.on("end", () => {
+                const tweeetsResp: TweetsResp = JSON.parse(data);
+                if (resp.statusCode !== 200)
+                  return next(new AppError(tweeetsResp.title, 503));
+
+                const { data: tweets, includes } = tweeetsResp;
+                const authorMap = {};
+                const attachementsMap = {};
+
+                for (const user of includes.users) {
+                  authorMap[user.id] = user;
                 }
-              }
-
-              for (const tweet of tweets) {
-                const d = new Date(`${tweet.created_at}`);
-                tweet.created_at = { date: "", time: "" } as
-                  | string & { date: string; time: string };
-                const dateArr = d
-                  .toLocaleDateString(undefined, {
-                    dateStyle: "medium",
-                  })
-                  .split("-");
-                tweet.created_at.date =
-                  `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
-                    /undefined/g,
-                    ""
-                  );
-                tweet.created_at.time = d
-                  .toLocaleTimeString(undefined, {
-                    timeStyle: "short",
-                    hour12: true,
-                  })
-                  .toUpperCase();
-
-                tweet.author_details = authorMap[tweet.author_id];
-
-                if (
-                  tweet.attachments &&
-                  tweet.attachments.media_keys.length > 0
-                ) {
-                  for (const media_key of tweet.attachments.media_keys) {
-                    const media = attachementsMap[media_key];
-                    let url: string;
-                    if (media) {
-                      if (media.type === "photo") url = media.url;
-                      else url = media.preview_image_url;
-
-                      if (!tweet.attachement_urls) {
-                        tweet.attachement_urls = [url];
-                      } else tweet.attachement_urls.push(url);
-                    }
+                if (includes.media) {
+                  for (const media of includes.media) {
+                    attachementsMap[media.media_key] = media;
                   }
                 }
 
-                tweet.id = idMap[tweet.id];
-              }
-              for (const tweet of tweets) {
-                delete tweet.attachments;
-              }
+                for (const tweet of tweets) {
+                  const d = new Date(`${tweet.created_at}`);
+                  tweet.created_at = { date: "", time: "" } as
+                    | string & { date: string; time: string };
+                  const dateArr = d
+                    .toLocaleDateString(undefined, {
+                      dateStyle: "medium",
+                    })
+                    .split("-");
+                  tweet.created_at.date =
+                    `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
+                      /undefined/g,
+                      ""
+                    );
+                  tweet.created_at.time = d
+                    .toLocaleTimeString(undefined, {
+                      timeStyle: "short",
+                      hour12: true,
+                    })
+                    .toUpperCase();
 
-              res.json({
-                status: true,
-                data: {
-                  limit_exceeded: false,
-                  tweets: tweeetsResp.data,
-                },
+                  tweet.author_details = authorMap[tweet.author_id];
+
+                  if (
+                    tweet.attachments &&
+                    tweet.attachments.media_keys.length > 0
+                  ) {
+                    for (const media_key of tweet.attachments.media_keys) {
+                      const media = attachementsMap[media_key];
+                      let url: string;
+                      if (media) {
+                        if (media.type === "photo") url = media.url;
+                        else url = media.preview_image_url;
+
+                        if (!tweet.attachement_urls) {
+                          tweet.attachement_urls = [url];
+                        } else tweet.attachement_urls.push(url);
+                      }
+                    }
+                  }
+
+                  tweet.id = idMap[tweet.id];
+                }
+                for (const tweet of tweets) {
+                  delete tweet.attachments;
+                }
+
+                res.json({
+                  status: true,
+                  data: {
+                    limit_exceeded: false,
+                    tweets: tweeetsResp.data,
+                  },
+                });
               });
-            });
-          }
-        );
-        request.end();
-      });
+            }
+          );
+          request.end();
+        });
+      } else return next(new AppError("Subscription Not Found", 404));
     });
   } catch (error) {
     return next(new AppError(error.message, 501));
