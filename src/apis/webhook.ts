@@ -412,3 +412,125 @@ export const membershipChanged = async (
     throw new AppError(error.message, 500);
   }
 };
+
+export const membershipCancelled = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = req.body as User;
+    console.log(JSON.stringify(user));
+    return res.json({ status: true });
+
+    const { member_id, new_membership } = user;
+
+    const last_posted = new Date().toISOString();
+
+    const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
+      Key: {
+        id: { S: member_id },
+      },
+      UpdateExpression: "SET #M = :m, #S = :s",
+      ExpressionAttributeNames: {
+        "#M": "membership",
+        "#S": "stats",
+      },
+      ExpressionAttributeValues: {
+        ":m": {
+          M: {
+            id: { S: new_membership.id },
+            status: { S: new_membership.status },
+            subscribed_to: { S: new_membership.subscribed_to },
+          },
+        },
+        ":s": {
+          M: {
+            self: {
+              M: {
+                like: {
+                  M: {
+                    count: {
+                      N: "0",
+                    },
+                    last_posted: {
+                      S: last_posted,
+                    },
+                  },
+                },
+                reply: {
+                  M: {
+                    count: {
+                      N: "0",
+                    },
+                    last_posted: {
+                      S: last_posted,
+                    },
+                  },
+                },
+                retweet: {
+                  M: {
+                    count: {
+                      N: "0",
+                    },
+                    last_posted: {
+                      S: last_posted,
+                    },
+                  },
+                },
+              },
+            },
+            others: {
+              M: {
+                like: {
+                  M: {
+                    count: {
+                      N: "0",
+                    },
+                    last_posted: {
+                      S: last_posted,
+                    },
+                  },
+                },
+                reply: {
+                  M: {
+                    count: {
+                      N: "0",
+                    },
+                    last_posted: {
+                      S: last_posted,
+                    },
+                  },
+                },
+                retweet: {
+                  M: {
+                    count: {
+                      N: "0",
+                    },
+                    last_posted: {
+                      S: last_posted,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      TableName: "Users",
+    };
+
+    dynamodb.updateItem(updateUserParams, (err, data) => {
+      if (err) {
+        console.log(JSON.stringify(err));
+        return next(new AppError(err.message, 503));
+      }
+      res.json({
+        status: true,
+        message: "User membership updated",
+      });
+    });
+  } catch (error) {
+    throw new AppError(error.message, 500);
+  }
+};

@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   memberAdded,
   memberDeleted,
+  membershipCancelled,
   membershipChanged,
   memberUpdated,
 } from "../apis/webhook";
@@ -17,7 +18,10 @@ webhookRouter.post("/member-deleted", memberDeleted);
 // member updated
 webhookRouter.post("/member-updated", memberUpdated);
 
-// membership changedd
+// membership changed
 webhookRouter.post("/membership-changed", membershipChanged);
+
+// membership cancelled
+webhookRouter.post("/membership-cancelled", membershipCancelled);
 
 export default webhookRouter;
