@@ -9,6 +9,8 @@ webhookRouter.post("/member-added", webhook_1.memberAdded);
 webhookRouter.post("/member-deleted", webhook_1.memberDeleted);
 // member updated
 webhookRouter.post("/member-updated", webhook_1.memberUpdated);
-// membership changedd
+// membership changed
 webhookRouter.post("/membership-changed", webhook_1.membershipChanged);
+// membership cancelled
+webhookRouter.post("/membership-canceled", webhook_1.membershipCanceled);
 exports.default = webhookRouter;

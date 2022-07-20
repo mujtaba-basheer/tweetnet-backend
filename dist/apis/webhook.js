@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.membershipChanged = exports.memberUpdated = exports.memberDeleted = exports.memberAdded = void 0;
+exports.membershipCanceled = exports.membershipChanged = exports.memberUpdated = exports.memberDeleted = exports.memberAdded = void 0;
 const app_error_1 = require("../utils/app-error");
 const subscription_1 = require("../data/subscription");
 const dotenv_1 = require("dotenv");
@@ -315,3 +315,118 @@ const membershipChanged = async (req, res, next) => {
     }
 };
 exports.membershipChanged = membershipChanged;
+const membershipCanceled = async (req, res, next) => {
+    try {
+        const user = req.body;
+        console.log(JSON.stringify(user));
+        return res.json({ status: true });
+        const { member_id, new_membership } = user;
+        const last_posted = new Date().toISOString();
+        const updateUserParams = {
+            Key: {
+                id: { S: member_id },
+            },
+            UpdateExpression: "SET #M = :m, #S = :s",
+            ExpressionAttributeNames: {
+                "#M": "membership",
+                "#S": "stats",
+            },
+            ExpressionAttributeValues: {
+                ":m": {
+                    M: {
+                        id: { S: new_membership.id },
+                        status: { S: new_membership.status },
+                        subscribed_to: { S: new_membership.subscribed_to },
+                    },
+                },
+                ":s": {
+                    M: {
+                        self: {
+                            M: {
+                                like: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                reply: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                retweet: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        others: {
+                            M: {
+                                like: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                reply: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                retweet: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            TableName: "Users",
+        };
+        dynamodb.updateItem(updateUserParams, (err, data) => {
+            if (err) {
+                console.log(JSON.stringify(err));
+                return next(new app_error_1.default(err.message, 503));
+            }
+            res.json({
+                status: true,
+                message: "User membership updated",
+            });
+        });
+    }
+    catch (error) {
+        throw new app_error_1.default(error.message, 500);
+    }
+};
+exports.membershipCanceled = membershipCanceled;
