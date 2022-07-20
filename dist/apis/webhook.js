@@ -206,119 +206,107 @@ const membershipChanged = async (req, res, next) => {
     try {
         const user = req.body;
         const { member_id, new_membership } = user;
-        const getUserParams = {
+        const last_posted = new Date().toISOString();
+        const updateUserParams = {
             Key: {
                 id: { S: member_id },
             },
+            UpdateExpression: "SET #M = :m, #S = :s",
+            ExpressionAttributeNames: {
+                "#M": "membership",
+                "#S": "stats",
+            },
+            ExpressionAttributeValues: {
+                ":m": {
+                    M: {
+                        id: { S: new_membership.id },
+                        status: { S: new_membership.status },
+                        subscribed_to: { S: new_membership.subscribed_to },
+                    },
+                },
+                ":s": {
+                    M: {
+                        self: {
+                            M: {
+                                like: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                reply: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                retweet: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        others: {
+                            M: {
+                                like: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                reply: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                                retweet: {
+                                    M: {
+                                        count: {
+                                            N: "0",
+                                        },
+                                        last_posted: {
+                                            S: last_posted,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
             TableName: "Users",
         };
-        dynamodb.getItem(getUserParams, (err, data) => {
-            if (err)
+        dynamodb.updateItem(updateUserParams, (err, data) => {
+            if (err) {
+                console.log(JSON.stringify(err));
                 return next(new app_error_1.default(err.message, 503));
-            const userRecord = data.Item;
-            const { membership } = userRecord;
-            const last_posted = new Date().toISOString();
-            const updateUserParams = {
-                Key: {
-                    id: { S: member_id },
-                },
-                UpdateExpression: "SET #M = :m, #S = :s",
-                ExpressionAttributeNames: {
-                    "#M": "membership",
-                    "#S": "stats",
-                },
-                ExpressionAttributeValues: {
-                    ":m": {
-                        M: {
-                            id: { S: new_membership.id },
-                            status: { S: new_membership.status },
-                            subscribed_to: { S: new_membership.subscribed_to },
-                        },
-                    },
-                    ":s": {
-                        M: {
-                            self: {
-                                M: {
-                                    like: {
-                                        M: {
-                                            count: {
-                                                N: "0",
-                                            },
-                                            last_posted: {
-                                                S: last_posted,
-                                            },
-                                        },
-                                    },
-                                    reply: {
-                                        M: {
-                                            count: {
-                                                N: "0",
-                                            },
-                                            last_posted: {
-                                                S: last_posted,
-                                            },
-                                        },
-                                    },
-                                    retweet: {
-                                        M: {
-                                            count: {
-                                                N: "0",
-                                            },
-                                            last_posted: {
-                                                S: last_posted,
-                                            },
-                                        },
-                                    },
-                                },
-                            },
-                            others: {
-                                M: {
-                                    like: {
-                                        M: {
-                                            count: {
-                                                N: "0",
-                                            },
-                                            last_posted: {
-                                                S: last_posted,
-                                            },
-                                        },
-                                    },
-                                    reply: {
-                                        M: {
-                                            count: {
-                                                N: "0",
-                                            },
-                                            last_posted: {
-                                                S: last_posted,
-                                            },
-                                        },
-                                    },
-                                    retweet: {
-                                        M: {
-                                            count: {
-                                                N: "0",
-                                            },
-                                            last_posted: {
-                                                S: last_posted,
-                                            },
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-                TableName: "Users",
-            };
-            dynamodb.updateItem(updateUserParams, (err, data) => {
-                if (err) {
-                    console.log(JSON.stringify(err));
-                    return next(new app_error_1.default(err.message, 503));
-                }
-                res.json({
-                    status: true,
-                    message: "User membership updated",
-                });
+            }
+            res.json({
+                status: true,
+                message: "User membership updated",
             });
         });
     }
