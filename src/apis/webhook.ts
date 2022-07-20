@@ -170,15 +170,31 @@ export const memberUpdated = async (
 ) => {
   type UserRecord = {
     membership: {
-      M: {};
+      M: {
+        id: {
+          S: string;
+        };
+        staus: {
+          S: string;
+        };
+        subscribed_to: {
+          S: string;
+        };
+      };
+    };
+    profile: {
+      M: {
+        usernames: {
+          L: { S: string }[];
+        };
+      };
     };
   };
 
   try {
     const user = req.body as User;
-    console.log(JSON.stringify(user));
 
-    const { id, email, membership, profile, created_at } = user;
+    const { id } = user;
 
     const getUserParams: AWS.DynamoDB.GetItemInput = {
       Key: {
@@ -190,79 +206,45 @@ export const memberUpdated = async (
     dynamodb.getItem(getUserParams, (err, data) => {
       if (err) return next(new AppError(err.message, 503));
 
-      const last_posted = new Date().toISOString();
+      const userRecord: UserRecord = data.Item as UserRecord;
+      const { membership, profile } = userRecord;
 
       const usernames: string[] = [profile["twitter-handle"]];
       const sub_details = limits.find(
-        (x) => x.sid === membership.subscribed_to
+        (x) => x.sid === membership.M.subscribed_to.S
       );
       if (sub_details && sub_details.usernames === 3) {
         usernames.push(profile["twitter-handle-second"]);
         usernames.push(profile["twitter-handle-third"]);
       }
 
-      res.json({
-        status: true,
+      const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
+        Key: {
+          id: { S: id },
+        },
+        UpdateExpression: "SET #P = :p",
+        ExpressionAttributeNames: {
+          "#P": "profile",
+        },
+        ExpressionAttributeValues: {
+          ":p": {
+            M: {
+              usernames: {
+                L: usernames.map((x) => ({ S: x })),
+              },
+            },
+          },
+        },
+        TableName: "Users",
+      };
+
+      dynamodb.updateItem(updateUserParams, (err, data) => {
+        if (err) return next(new AppError(err.message, 503));
+        res.json({
+          status: true,
+          message: "User updated",
+        });
       });
-
-      // const params: AWS.DynamoDB.PutItemInput = {
-      //   Item: {
-      //     id: { S: id },
-      //     email: { S: email },
-      //     profile: {
-      //       M: {
-      //         usernames: {
-      //           L: usernames.map((u) => ({ S: u.replace("@", "") })),
-      //         },
-      //       },
-      //     },
-      //     membership: {
-      //       M: {
-      //         id: {
-      //           S: membership.id,
-      //         },
-      //         staus: {
-      //           S: membership.status,
-      //         },
-      //         subscribed_to: {
-      //           S: membership.subscribed_to,
-      //         },
-      //       },
-      //     },
-      //     stats: {
-      //       M: {
-      //         like: {
-      //           M: {
-      //             count: { N: "0" },
-      //             last_posted: { S: last_posted },
-      //           },
-      //         },
-      //         retweet: {
-      //           M: {
-      //             count: { N: "0" },
-      //             last_posted: { S: last_posted },
-      //           },
-      //         },
-      //         reply: {
-      //           M: {
-      //             count: { N: "0" },
-      //             last_posted: { S: last_posted },
-      //           },
-      //         },
-      //       },
-      //     },
-      //     created_at: { S: created_at },
-      //   },
-      //   TableName: "Users",
-      // };
-
-      // dynamodb.putItem(params, (err, data) => {
-      //   if (err) return next(new AppError(err.message, 503));
-      //   res.json({
-      //     status: true,
-      //     message: "User Added to DB",
-      //   });
-      // });
     });
   } catch (error) {
     throw new AppError(error.message, 500);

@@ -122,8 +122,7 @@ exports.memberDeleted = memberDeleted;
 const memberUpdated = async (req, res, next) => {
     try {
         const user = req.body;
-        console.log(JSON.stringify(user));
-        const { id, email, membership, profile, created_at } = user;
+        const { id } = user;
         const getUserParams = {
             Key: {
                 id: { S: id },
@@ -133,73 +132,41 @@ const memberUpdated = async (req, res, next) => {
         dynamodb.getItem(getUserParams, (err, data) => {
             if (err)
                 return next(new app_error_1.default(err.message, 503));
-            const last_posted = new Date().toISOString();
+            const userRecord = data.Item;
+            const { membership, profile } = userRecord;
             const usernames = [profile["twitter-handle"]];
-            const sub_details = subscription_1.default.find((x) => x.sid === membership.subscribed_to);
+            const sub_details = subscription_1.default.find((x) => x.sid === membership.M.subscribed_to.S);
             if (sub_details && sub_details.usernames === 3) {
                 usernames.push(profile["twitter-handle-second"]);
                 usernames.push(profile["twitter-handle-third"]);
             }
-            res.json({
-                status: true,
+            const updateUserParams = {
+                Key: {
+                    id: { S: id },
+                },
+                UpdateExpression: "SET #P = :p",
+                ExpressionAttributeNames: {
+                    "#P": "profile",
+                },
+                ExpressionAttributeValues: {
+                    ":p": {
+                        M: {
+                            usernames: {
+                                L: usernames.map((x) => ({ S: x })),
+                            },
+                        },
+                    },
+                },
+                TableName: "Users",
+            };
+            dynamodb.updateItem(updateUserParams, (err, data) => {
+                if (err)
+                    return next(new app_error_1.default(err.message, 503));
+                res.json({
+                    status: true,
+                    message: "User updated",
+                });
             });
-            // const params: AWS.DynamoDB.PutItemInput = {
-            //   Item: {
-            //     id: { S: id },
-            //     email: { S: email },
-            //     profile: {
-            //       M: {
-            //         usernames: {
-            //           L: usernames.map((u) => ({ S: u.replace("@", "") })),
-            //         },
-            //       },
-            //     },
-            //     membership: {
-            //       M: {
-            //         id: {
-            //           S: membership.id,
-            //         },
-            //         staus: {
-            //           S: membership.status,
-            //         },
-            //         subscribed_to: {
-            //           S: membership.subscribed_to,
-            //         },
-            //       },
-            //     },
-            //     stats: {
-            //       M: {
-            //         like: {
-            //           M: {
-            //             count: { N: "0" },
-            //             last_posted: { S: last_posted },
-            //           },
-            //         },
-            //         retweet: {
-            //           M: {
-            //             count: { N: "0" },
-            //             last_posted: { S: last_posted },
-            //           },
-            //         },
-            //         reply: {
-            //           M: {
-            //             count: { N: "0" },
-            //             last_posted: { S: last_posted },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     created_at: { S: created_at },
-            //   },
-            //   TableName: "Users",
-            // };
-            // dynamodb.putItem(params, (err, data) => {
-            //   if (err) return next(new AppError(err.message, 503));
-            //   res.json({
-            //     status: true,
-            //     message: "User Added to DB",
-            //   });
-            // });
         });
     }
     catch (error) {
