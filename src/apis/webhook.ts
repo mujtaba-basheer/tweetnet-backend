@@ -230,6 +230,99 @@ export const memberUpdated = async (
           ":p": {
             M: {
               usernames: {
+                L: usernames.map((u) => ({ S: u.replace("@", "") })),
+              },
+            },
+          },
+        },
+        TableName: "Users",
+      };
+
+      dynamodb.updateItem(updateUserParams, (err, data) => {
+        if (err) {
+          console.log(JSON.stringify(err));
+          return next(new AppError(err.message, 503));
+        }
+        res.json({
+          status: true,
+          message: "User updated",
+        });
+      });
+    });
+  } catch (error) {
+    throw new AppError(error.message, 500);
+  }
+};
+
+export const membershipChanged = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  type UserRecord = {
+    membership: {
+      M: {
+        id: {
+          S: string;
+        };
+        staus: {
+          S: string;
+        };
+        subscribed_to: {
+          S: string;
+        };
+      };
+    };
+    profile: {
+      M: {
+        usernames: {
+          L: { S: string }[];
+        };
+      };
+    };
+  };
+
+  try {
+    const user = req.body as User;
+    console.log(JSON.stringify(user));
+    return res.json({ status: true });
+
+    const { id, profile } = user;
+
+    const getUserParams: AWS.DynamoDB.GetItemInput = {
+      Key: {
+        id: { S: id },
+      },
+      TableName: "Users",
+    };
+
+    dynamodb.getItem(getUserParams, (err, data) => {
+      if (err) return next(new AppError(err.message, 503));
+
+      const userRecord: UserRecord = data.Item as UserRecord;
+      const { membership } = userRecord;
+
+      const usernames: string[] = [profile["twitter-handle"]];
+      const sub_details = limits.find(
+        (x) => x.sid === membership.M.subscribed_to.S
+      );
+      if (sub_details && sub_details.usernames === 3) {
+        usernames.push(profile["twitter-handle-second"]);
+        usernames.push(profile["twitter-handle-third"]);
+      }
+
+      const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
+        Key: {
+          id: { S: id },
+        },
+        UpdateExpression: "SET #P = :p",
+        ExpressionAttributeNames: {
+          "#P": "profile",
+        },
+        ExpressionAttributeValues: {
+          ":p": {
+            M: {
+              usernames: {
                 L: usernames.map((x) => ({ S: x })),
               },
             },
@@ -237,7 +330,6 @@ export const memberUpdated = async (
         },
         TableName: "Users",
       };
-      console.log(JSON.stringify(updateUserParams));
 
       dynamodb.updateItem(updateUserParams, (err, data) => {
         if (err) {

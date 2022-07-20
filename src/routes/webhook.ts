@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { memberAdded, memberDeleted, memberUpdated } from "../apis/webhook";
+import {
+  memberAdded,
+  memberDeleted,
+  membershipChanged,
+  memberUpdated,
+} from "../apis/webhook";
 
 const webhookRouter = Router();
 
@@ -11,5 +16,8 @@ webhookRouter.post("/member-deleted", memberDeleted);
 
 // member updated
 webhookRouter.post("/member-updated", memberUpdated);
+
+// membership changed
+webhookRouter.post("/membership-changed", membershipChanged);
 
 export default webhookRouter;

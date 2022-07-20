@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.memberUpdated = exports.memberDeleted = exports.memberAdded = void 0;
+exports.membershipChanged = exports.memberUpdated = exports.memberDeleted = exports.memberAdded = void 0;
 const app_error_1 = require("../utils/app-error");
 const subscription_1 = require("../data/subscription");
 const dotenv_1 = require("dotenv");
@@ -152,14 +152,13 @@ const memberUpdated = async (req, res, next) => {
                     ":p": {
                         M: {
                             usernames: {
-                                L: usernames.map((x) => ({ S: x })),
+                                L: usernames.map((u) => ({ S: u.replace("@", "") })),
                             },
                         },
                     },
                 },
                 TableName: "Users",
             };
-            console.log(JSON.stringify(updateUserParams));
             dynamodb.updateItem(updateUserParams, (err, data) => {
                 if (err) {
                     console.log(JSON.stringify(err));
@@ -177,3 +176,62 @@ const memberUpdated = async (req, res, next) => {
     }
 };
 exports.memberUpdated = memberUpdated;
+const membershipChanged = async (req, res, next) => {
+    try {
+        const user = req.body;
+        console.log(JSON.stringify(user));
+        return res.json({ status: true });
+        const { id, profile } = user;
+        const getUserParams = {
+            Key: {
+                id: { S: id },
+            },
+            TableName: "Users",
+        };
+        dynamodb.getItem(getUserParams, (err, data) => {
+            if (err)
+                return next(new app_error_1.default(err.message, 503));
+            const userRecord = data.Item;
+            const { membership } = userRecord;
+            const usernames = [profile["twitter-handle"]];
+            const sub_details = subscription_1.default.find((x) => x.sid === membership.M.subscribed_to.S);
+            if (sub_details && sub_details.usernames === 3) {
+                usernames.push(profile["twitter-handle-second"]);
+                usernames.push(profile["twitter-handle-third"]);
+            }
+            const updateUserParams = {
+                Key: {
+                    id: { S: id },
+                },
+                UpdateExpression: "SET #P = :p",
+                ExpressionAttributeNames: {
+                    "#P": "profile",
+                },
+                ExpressionAttributeValues: {
+                    ":p": {
+                        M: {
+                            usernames: {
+                                L: usernames.map((x) => ({ S: x })),
+                            },
+                        },
+                    },
+                },
+                TableName: "Users",
+            };
+            dynamodb.updateItem(updateUserParams, (err, data) => {
+                if (err) {
+                    console.log(JSON.stringify(err));
+                    return next(new app_error_1.default(err.message, 503));
+                }
+                res.json({
+                    status: true,
+                    message: "User updated",
+                });
+            });
+        });
+    }
+    catch (error) {
+        throw new app_error_1.default(error.message, 500);
+    }
+};
+exports.membershipChanged = membershipChanged;
