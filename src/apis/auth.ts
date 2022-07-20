@@ -20,9 +20,9 @@ const credentials = new AWS.Credentials({
 });
 const dynamodb = new AWS.DynamoDB({
   apiVersion: "2012-08-10",
-  endpoint: "dynamodb.ap-south-1.amazonaws.com",
+  endpoint: "dynamodb.us-east-1.amazonaws.com",
   credentials,
-  region: "ap-south-1",
+  region: "us-east-1",
 });
 
 export const authorizationUrl = catchAsync(
