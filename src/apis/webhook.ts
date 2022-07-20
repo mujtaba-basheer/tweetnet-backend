@@ -195,6 +195,7 @@ export const memberUpdated = async (
     const user = req.body as User;
 
     const { id } = user;
+    console.log({ id });
 
     const getUserParams: AWS.DynamoDB.GetItemInput = {
       Key: {
@@ -208,6 +209,7 @@ export const memberUpdated = async (
 
       const userRecord: UserRecord = data.Item as UserRecord;
       const { membership, profile } = userRecord;
+      console.log({ membership, profile });
 
       const usernames: string[] = [profile["twitter-handle"]];
       const sub_details = limits.find(

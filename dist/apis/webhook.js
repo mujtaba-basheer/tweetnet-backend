@@ -123,6 +123,7 @@ const memberUpdated = async (req, res, next) => {
     try {
         const user = req.body;
         const { id } = user;
+        console.log({ id });
         const getUserParams = {
             Key: {
                 id: { S: id },
@@ -134,6 +135,7 @@ const memberUpdated = async (req, res, next) => {
                 return next(new app_error_1.default(err.message, 503));
             const userRecord = data.Item;
             const { membership, profile } = userRecord;
+            console.log({ membership, profile });
             const usernames = [profile["twitter-handle"]];
             const sub_details = subscription_1.default.find((x) => x.sid === membership.M.subscribed_to.S);
             if (sub_details && sub_details.usernames === 3) {
