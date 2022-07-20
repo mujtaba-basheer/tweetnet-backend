@@ -413,7 +413,7 @@ export const membershipChanged = async (
   }
 };
 
-export const membershipCancelled = async (
+export const membershipCanceled = async (
   req: Request,
   res: Response,
   next: NextFunction
