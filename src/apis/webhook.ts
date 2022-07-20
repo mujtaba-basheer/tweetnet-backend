@@ -195,7 +195,7 @@ export const memberUpdated = async (
     const user = req.body as User;
 
     const { id } = user;
-    console.log({ id });
+    console.log(JSON.stringify(user));
 
     const getUserParams: AWS.DynamoDB.GetItemInput = {
       Key: {

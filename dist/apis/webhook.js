@@ -123,7 +123,7 @@ const memberUpdated = async (req, res, next) => {
     try {
         const user = req.body;
         const { id } = user;
-        console.log({ id });
+        console.log(JSON.stringify(user));
         const getUserParams = {
             Key: {
                 id: { S: id },
