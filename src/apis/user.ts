@@ -452,132 +452,194 @@ export const getTweetsByTask = async (
   res: Response,
   next: NextFunction
 ) => {
+  type Stat = {
+    count: { N: string };
+    last_posted: { S: string };
+  };
+  type ValidTask = "like" | "reply" | "retweet";
+  type User = {
+    membership: {
+      M: {
+        subscribed_to: { S: string };
+      };
+    };
+    stats: {
+      M: {
+        self: {
+          M: {
+            like: { M: Stat };
+            retweet: { M: Stat };
+            reply: { M: Stat };
+          };
+        };
+        others: {
+          M: {
+            like: { M: Stat };
+            retweet: { M: Stat };
+            reply: { M: Stat };
+          };
+        };
+      };
+    };
+    created_at: { S: string };
+  };
+
   const token = req.headers.authorization as string;
   const { mid } = req.user.data;
-  const { task } = req.params;
+  const task: ValidTask = req.params.task as ValidTask;
 
   try {
-    // getting tweets from DB
-    const getTweetsParams: AWS.DynamoDB.ScanInput = {
-      FilterExpression: "#T = :T AND #CB <> :CB AND NOT contains(#AB, :CB)",
-      ExpressionAttributeNames: {
-        "#CB": "created_by",
-        "#AB": "acted_by",
-        "#ID": "id",
-        "#T": "task",
-      },
-      ExpressionAttributeValues: {
-        ":CB": {
-          S: mid,
-        },
-        ":T": {
-          S: task,
-        },
-      },
-      ProjectionExpression: "#ID",
-      Limit: 100,
-      TableName: "Tweets",
+    // getting user object from DB
+    const getUserParams: AWS.DynamoDB.GetItemInput = {
+      Key: { id: { S: mid } },
+      TableName: "Users",
     };
+    dynamodb.getItem(getUserParams, (err, data) => {
+      if (err || !data.Item) {
+        return next(new AppError(err.message, 503));
+      }
 
-    dynamodb.scan(getTweetsParams, (err, data) => {
-      if (err) return next(new AppError(err.message, 503));
+      const user = data.Item as unknown as User;
+      const sid = user.membership.M.subscribed_to.S;
+      const limit_o = limits.find((x) => x.sid === sid);
 
-      const ids: string[] = data.Items.map((x) => x.id.S);
-      const tweet_ids: string[] = ids.map((x: string) => x.split(".")[0]);
-      const idMap = {};
-      for (let i = 0; i < ids.length; i++) idMap[tweet_ids[i]] = ids[i];
+      if (
+        limit_o.limit.others[task] <= +user.stats.M.others.M[task].M.count.N
+      ) {
+        return res.json({
+          status: true,
+          data: {
+            limit_exceeded: true,
+            tweets: [],
+          },
+        });
+      }
 
-      const request = https.request(
-        `https://api.twitter.com/2/tweets?ids=${tweet_ids.join(
-          ","
-        )}&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url&tweet.fields=created_at`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
+      // getting tweets from DB
+      const getTweetsParams: AWS.DynamoDB.ScanInput = {
+        FilterExpression: "#T = :T AND #CB <> :CB AND NOT contains(#AB, :CB)",
+        ExpressionAttributeNames: {
+          "#CB": "created_by",
+          "#AB": "acted_by",
+          "#ID": "id",
+          "#T": "task",
+        },
+        ExpressionAttributeValues: {
+          ":CB": {
+            S: mid,
+          },
+          ":T": {
+            S: task,
           },
         },
-        (resp) => {
-          let data = "";
-          resp.on("data", (chunk) => {
-            data += chunk.toString();
-          });
-          resp.on("error", (err) => {
-            return next(new AppError(err.message, 503));
-          });
-          resp.on("end", () => {
-            const tweeetsResp: TweetsResp = JSON.parse(data);
-            if (resp.statusCode !== 200)
-              return next(new AppError(tweeetsResp.title, 503));
+        ProjectionExpression: "#ID",
+        Limit: 100,
+        TableName: "Tweets",
+      };
 
-            const { data: tweets, includes } = tweeetsResp;
-            const authorMap = {};
-            const attachementsMap = {};
+      dynamodb.scan(getTweetsParams, (err, data) => {
+        if (err) return next(new AppError(err.message, 503));
 
-            for (const user of includes.users) {
-              authorMap[user.id] = user;
-            }
-            if (includes.media) {
-              for (const media of includes.media) {
-                attachementsMap[media.media_key] = media;
+        const ids: string[] = data.Items.map((x) => x.id.S);
+        const tweet_ids: string[] = ids.map((x: string) => x.split(".")[0]);
+        const idMap = {};
+        for (let i = 0; i < ids.length; i++) idMap[tweet_ids[i]] = ids[i];
+
+        const request = https.request(
+          `https://api.twitter.com/2/tweets?ids=${tweet_ids.join(
+            ","
+          )}&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&user.fields=profile_image_url&tweet.fields=created_at`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+          (resp) => {
+            let data = "";
+            resp.on("data", (chunk) => {
+              data += chunk.toString();
+            });
+            resp.on("error", (err) => {
+              return next(new AppError(err.message, 503));
+            });
+            resp.on("end", () => {
+              const tweeetsResp: TweetsResp = JSON.parse(data);
+              if (resp.statusCode !== 200)
+                return next(new AppError(tweeetsResp.title, 503));
+
+              const { data: tweets, includes } = tweeetsResp;
+              const authorMap = {};
+              const attachementsMap = {};
+
+              for (const user of includes.users) {
+                authorMap[user.id] = user;
               }
-            }
-
-            for (const tweet of tweets) {
-              const d = new Date(`${tweet.created_at}`);
-              tweet.created_at = { date: "", time: "" } as
-                | string & { date: string; time: string };
-              const dateArr = d
-                .toLocaleDateString(undefined, {
-                  dateStyle: "medium",
-                })
-                .split("-");
-              tweet.created_at.date =
-                `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
-                  /undefined/g,
-                  ""
-                );
-              tweet.created_at.time = d
-                .toLocaleTimeString(undefined, {
-                  timeStyle: "short",
-                  hour12: true,
-                })
-                .toUpperCase();
-
-              tweet.author_details = authorMap[tweet.author_id];
-
-              if (
-                tweet.attachments &&
-                tweet.attachments.media_keys.length > 0
-              ) {
-                for (const media_key of tweet.attachments.media_keys) {
-                  const media = attachementsMap[media_key];
-                  let url: string;
-                  if (media) {
-                    if (media.type === "photo") url = media.url;
-                    else url = media.preview_image_url;
-
-                    if (!tweet.attachement_urls) {
-                      tweet.attachement_urls = [url];
-                    } else tweet.attachement_urls.push(url);
-                  }
+              if (includes.media) {
+                for (const media of includes.media) {
+                  attachementsMap[media.media_key] = media;
                 }
               }
 
-              tweet.id = idMap[tweet.id];
-            }
-            for (const tweet of tweets) {
-              delete tweet.attachments;
-            }
+              for (const tweet of tweets) {
+                const d = new Date(`${tweet.created_at}`);
+                tweet.created_at = { date: "", time: "" } as
+                  | string & { date: string; time: string };
+                const dateArr = d
+                  .toLocaleDateString(undefined, {
+                    dateStyle: "medium",
+                  })
+                  .split("-");
+                tweet.created_at.date =
+                  `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
+                    /undefined/g,
+                    ""
+                  );
+                tweet.created_at.time = d
+                  .toLocaleTimeString(undefined, {
+                    timeStyle: "short",
+                    hour12: true,
+                  })
+                  .toUpperCase();
 
-            res.json({
-              status: true,
-              data: tweeetsResp.data,
+                tweet.author_details = authorMap[tweet.author_id];
+
+                if (
+                  tweet.attachments &&
+                  tweet.attachments.media_keys.length > 0
+                ) {
+                  for (const media_key of tweet.attachments.media_keys) {
+                    const media = attachementsMap[media_key];
+                    let url: string;
+                    if (media) {
+                      if (media.type === "photo") url = media.url;
+                      else url = media.preview_image_url;
+
+                      if (!tweet.attachement_urls) {
+                        tweet.attachement_urls = [url];
+                      } else tweet.attachement_urls.push(url);
+                    }
+                  }
+                }
+
+                tweet.id = idMap[tweet.id];
+              }
+              for (const tweet of tweets) {
+                delete tweet.attachments;
+              }
+
+              res.json({
+                status: true,
+                data: {
+                  limit_exceeded: false,
+                  tweets: tweeetsResp.data,
+                },
+              });
             });
-          });
-        }
-      );
-      request.end();
+          }
+        );
+        request.end();
+      });
     });
   } catch (error) {
     return next(new AppError(error.message, 501));
