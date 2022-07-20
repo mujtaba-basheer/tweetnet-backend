@@ -241,7 +241,10 @@ export const memberUpdated = async (
       };
 
       dynamodb.updateItem(updateUserParams, (err, data) => {
-        if (err) return next(new AppError(err.message, 503));
+        if (err) {
+          console.log(JSON.stringify(err));
+          return next(new AppError(err.message, 503));
+        }
         res.json({
           status: true,
           message: "User updated",

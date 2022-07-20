@@ -162,8 +162,10 @@ const memberUpdated = async (req, res, next) => {
                 TableName: "Users",
             };
             dynamodb.updateItem(updateUserParams, (err, data) => {
-                if (err)
+                if (err) {
+                    console.log(JSON.stringify(err));
                     return next(new app_error_1.default(err.message, 503));
+                }
                 res.json({
                     status: true,
                     message: "User updated",
