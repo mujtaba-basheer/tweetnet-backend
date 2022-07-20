@@ -160,7 +160,7 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                 const limit_o = subscription_1.default.find((x) => x.sid === sid);
                 // checking daily limits
                 if (limit_o) {
-                    const limit = limit_o.limit[task];
+                    const limit = limit_o.limit.self[task];
                     const created_at_date = created_at.toISOString().substring(0, 10);
                     const last_posted_date = last_posted.substring(0, 10);
                     try {
@@ -427,52 +427,126 @@ exports.likeTweet = (0, catch_async_1.default)(async (req, res, next) => {
         const { id: user_id, mid } = req.user.data;
         const id = req.params.id;
         const tid = id.split(".")[0];
-        const request = https.request(`https://api.twitter.com/2/users/${user_id}/likes`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-        }, (resp) => {
-            let data = "";
-            resp.on("data", (chunk) => {
-                data += chunk.toString();
-            });
-            resp.on("error", (err) => {
-                console.error(err);
-            });
-            resp.on("end", () => {
-                data = JSON.parse(data);
-                if (data.error) {
-                    return next(new app_error_1.default(data.error, 503));
-                }
-                // adding task record to DB
-                const updateTweetParams = {
-                    Key: {
-                        id: { S: id },
-                    },
-                    AttributeUpdates: {
-                        acted_by: {
-                            Action: "ADD",
-                            Value: {
-                                L: [{ S: mid }],
-                            },
+        // getting user object from DB
+        const getUserParams = {
+            Key: { id: { S: mid } },
+            TableName: "Users",
+        };
+        dynamodb.getItem(getUserParams, (err, data) => {
+            if (err || !data.Item) {
+                return next(new app_error_1.default(err.message, 503));
+            }
+            const user = data.Item;
+            const created_at = new Date();
+            const newStats = Object.assign({}, user.stats.M);
+            const task = "like";
+            const { count: { N: count }, last_posted: { S: last_posted }, } = newStats.others.M[task].M;
+            const c = +count;
+            const sid = user.membership.M.subscribed_to.S;
+            const n = 1;
+            const limit_o = subscription_1.default.find((x) => x.sid === sid);
+            // checking daily limits
+            if (limit_o) {
+                const limit = limit_o.limit.others[task];
+                const created_at_date = created_at.toISOString().substring(0, 10);
+                const last_posted_date = last_posted.substring(0, 10);
+                try {
+                    if (last_posted_date < created_at_date) {
+                        if (n <= limit) {
+                            newStats.others.M[task].M.count = { N: n + "" };
+                            newStats.others.M[task].M.last_posted = {
+                                S: created_at.toISOString(),
+                            };
+                        }
+                        else
+                            throw new Error("Limit exceeded for: LIKE");
+                    }
+                    else if (n + c <= limit) {
+                        newStats.others.M[task].M.count = { N: c + n + "" };
+                        newStats.others.M[task].M.last_posted = {
+                            S: created_at.toISOString(),
+                        };
+                    }
+                    else
+                        throw new Error("Limit exceeded for: LIKE");
+                    const request = https.request(`https://api.twitter.com/2/users/${user_id}/likes`, {
+                        method: "POST",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
                         },
-                    },
-                    TableName: "Tweets",
-                };
-                dynamodb.updateItem(updateTweetParams, (err, data) => {
-                    if (err)
-                        return next(new app_error_1.default(err.message, 501));
+                    }, (resp) => {
+                        let data = "";
+                        resp.on("data", (chunk) => {
+                            data += chunk.toString();
+                        });
+                        resp.on("error", (err) => {
+                            console.error(err);
+                        });
+                        resp.on("end", () => {
+                            data = JSON.parse(data);
+                            if (data.error) {
+                                return next(new app_error_1.default(data.error, 503));
+                            }
+                            // adding task record to DB
+                            const updateTweetParams = {
+                                Key: {
+                                    id: { S: id },
+                                },
+                                AttributeUpdates: {
+                                    acted_by: {
+                                        Action: "ADD",
+                                        Value: {
+                                            L: [{ S: mid }],
+                                        },
+                                    },
+                                },
+                                TableName: "Tweets",
+                            };
+                            dynamodb.updateItem(updateTweetParams, (err, data) => {
+                                if (err)
+                                    return next(new app_error_1.default(err.message, 501));
+                                const updateUserParams = {
+                                    Key: { id: { S: mid } },
+                                    UpdateExpression: "SET #stats=:stats",
+                                    ExpressionAttributeNames: {
+                                        "#stats": "stats",
+                                    },
+                                    ExpressionAttributeValues: {
+                                        ":stats": { M: newStats },
+                                    },
+                                    TableName: "Users",
+                                };
+                                dynamodb.updateItem(updateUserParams, (err, data) => {
+                                    if (err)
+                                        return next(new app_error_1.default(err.message, 503));
+                                    res.json({
+                                        status: true,
+                                        data: {
+                                            message: "Tweet liked",
+                                            limit_exceeded: c + n === limit,
+                                        },
+                                    });
+                                });
+                            });
+                        });
+                    });
+                    request.write(JSON.stringify({ tweet_id: tid }));
+                    request.end();
+                }
+                catch (error) {
                     res.json({
                         status: true,
-                        message: "Tweet liked",
+                        data: {
+                            limit_exceeded: true,
+                            message: error.message,
+                        },
                     });
-                });
-            });
+                }
+            }
+            else
+                return next(new app_error_1.default("Subscription not found", 404));
         });
-        request.write(JSON.stringify({ tweet_id: tid }));
-        request.end();
     }
     catch (error) {
         return next(new app_error_1.default(error.message, 501));
@@ -484,52 +558,126 @@ exports.retweetTweet = (0, catch_async_1.default)(async (req, res, next) => {
         const { id: user_id, mid } = req.user.data;
         const id = req.params.id;
         const tid = id.split(".")[0];
-        const request = https.request(`https://api.twitter.com/2/users/${user_id}/retweets`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-        }, (resp) => {
-            let data = "";
-            resp.on("data", (chunk) => {
-                data += chunk.toString();
-            });
-            resp.on("error", (err) => {
-                console.error(err);
-            });
-            resp.on("end", () => {
-                data = JSON.parse(data);
-                if (data.error) {
-                    return next(new app_error_1.default(data.error, 503));
-                }
-                // adding task record to DB
-                const updateTweetParams = {
-                    Key: {
-                        id: { S: id },
-                    },
-                    AttributeUpdates: {
-                        acted_by: {
-                            Action: "ADD",
-                            Value: {
-                                L: [{ S: mid }],
-                            },
+        // getting user object from DB
+        const getUserParams = {
+            Key: { id: { S: mid } },
+            TableName: "Users",
+        };
+        dynamodb.getItem(getUserParams, (err, data) => {
+            if (err || !data.Item) {
+                return next(new app_error_1.default(err.message, 503));
+            }
+            const user = data.Item;
+            const created_at = new Date();
+            const newStats = Object.assign({}, user.stats.M);
+            const task = "retweet";
+            const { count: { N: count }, last_posted: { S: last_posted }, } = newStats.others.M[task].M;
+            const c = +count;
+            const sid = user.membership.M.subscribed_to.S;
+            const n = 1;
+            const limit_o = subscription_1.default.find((x) => x.sid === sid);
+            // checking daily limits
+            if (limit_o) {
+                const limit = limit_o.limit.others[task];
+                const created_at_date = created_at.toISOString().substring(0, 10);
+                const last_posted_date = last_posted.substring(0, 10);
+                try {
+                    if (last_posted_date < created_at_date) {
+                        if (n <= limit) {
+                            newStats.others.M[task].M.count = { N: n + "" };
+                            newStats.others.M[task].M.last_posted = {
+                                S: created_at.toISOString(),
+                            };
+                        }
+                        else
+                            throw new Error("Limit exceeded for: RETWEET");
+                    }
+                    else if (n + c <= limit) {
+                        newStats.others.M[task].M.count = { N: c + n + "" };
+                        newStats.others.M[task].M.last_posted = {
+                            S: created_at.toISOString(),
+                        };
+                    }
+                    else
+                        throw new Error("Limit exceeded for: RETWEET");
+                    const request = https.request(`https://api.twitter.com/2/users/${user_id}/retweets`, {
+                        method: "POST",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
                         },
-                    },
-                    TableName: "Tweets",
-                };
-                dynamodb.updateItem(updateTweetParams, (err, data) => {
-                    if (err)
-                        return next(new app_error_1.default(err.message, 501));
+                    }, (resp) => {
+                        let data = "";
+                        resp.on("data", (chunk) => {
+                            data += chunk.toString();
+                        });
+                        resp.on("error", (err) => {
+                            console.error(err);
+                        });
+                        resp.on("end", () => {
+                            data = JSON.parse(data);
+                            if (data.error) {
+                                return next(new app_error_1.default(data.error, 503));
+                            }
+                            // adding task record to DB
+                            const updateTweetParams = {
+                                Key: {
+                                    id: { S: id },
+                                },
+                                AttributeUpdates: {
+                                    acted_by: {
+                                        Action: "ADD",
+                                        Value: {
+                                            L: [{ S: mid }],
+                                        },
+                                    },
+                                },
+                                TableName: "Tweets",
+                            };
+                            dynamodb.updateItem(updateTweetParams, (err, data) => {
+                                if (err)
+                                    return next(new app_error_1.default(err.message, 501));
+                                const updateUserParams = {
+                                    Key: { id: { S: mid } },
+                                    UpdateExpression: "SET #stats=:stats",
+                                    ExpressionAttributeNames: {
+                                        "#stats": "stats",
+                                    },
+                                    ExpressionAttributeValues: {
+                                        ":stats": { M: newStats },
+                                    },
+                                    TableName: "Users",
+                                };
+                                dynamodb.updateItem(updateUserParams, (err, data) => {
+                                    if (err)
+                                        return next(new app_error_1.default(err.message, 503));
+                                    res.json({
+                                        status: true,
+                                        data: {
+                                            message: "Tweet retweeted",
+                                            limit_exceeded: c + n === limit,
+                                        },
+                                    });
+                                });
+                            });
+                        });
+                    });
+                    request.write(JSON.stringify({ tweet_id: tid }));
+                    request.end();
+                }
+                catch (error) {
                     res.json({
                         status: true,
-                        message: "Tweet retweeted",
+                        data: {
+                            limit_exceeded: true,
+                            message: error.message,
+                        },
                     });
-                });
-            });
+                }
+            }
+            else
+                return next(new app_error_1.default("Subscription not found", 404));
         });
-        request.write(JSON.stringify({ tweet_id: tid }));
-        request.end();
     }
     catch (error) {
         return next(new app_error_1.default(error.message, 501));
@@ -538,7 +686,7 @@ exports.retweetTweet = (0, catch_async_1.default)(async (req, res, next) => {
 exports.replyToTweet = (0, catch_async_1.default)(async (req, res, next) => {
     try {
         const token = req.headers.authorization;
-        const { mid } = req.user.data;
+        const { id: user_id, mid } = req.user.data;
         const id = req.params.id;
         const tid = id.split(".")[0];
         const { text } = req.body;
@@ -548,52 +696,126 @@ exports.replyToTweet = (0, catch_async_1.default)(async (req, res, next) => {
                 in_reply_to_tweet_id: tid,
             },
         };
-        const request = https.request("https://api.twitter.com/2/tweets", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-        }, (resp) => {
-            let data = "";
-            resp.on("data", (chunk) => {
-                data += chunk.toString();
-            });
-            resp.on("error", (err) => {
-                console.error(err);
-            });
-            resp.on("end", () => {
-                data = JSON.parse(data);
-                if (data.error) {
-                    return next(new app_error_1.default(data.error, 503));
-                }
-                // adding task record to DB
-                const updateTweetParams = {
-                    Key: {
-                        id: { S: id },
-                    },
-                    AttributeUpdates: {
-                        acted_by: {
-                            Action: "ADD",
-                            Value: {
-                                L: [{ S: mid }],
-                            },
+        // getting user object from DB
+        const getUserParams = {
+            Key: { id: { S: mid } },
+            TableName: "Users",
+        };
+        dynamodb.getItem(getUserParams, (err, data) => {
+            if (err || !data.Item) {
+                return next(new app_error_1.default(err.message, 503));
+            }
+            const user = data.Item;
+            const created_at = new Date();
+            const newStats = Object.assign({}, user.stats.M);
+            const task = "reply";
+            const { count: { N: count }, last_posted: { S: last_posted }, } = newStats.others.M[task].M;
+            const c = +count;
+            const sid = user.membership.M.subscribed_to.S;
+            const n = 1;
+            const limit_o = subscription_1.default.find((x) => x.sid === sid);
+            // checking daily limits
+            if (limit_o) {
+                const limit = limit_o.limit.others[task];
+                const created_at_date = created_at.toISOString().substring(0, 10);
+                const last_posted_date = last_posted.substring(0, 10);
+                try {
+                    if (last_posted_date < created_at_date) {
+                        if (n <= limit) {
+                            newStats.others.M[task].M.count = { N: n + "" };
+                            newStats.others.M[task].M.last_posted = {
+                                S: created_at.toISOString(),
+                            };
+                        }
+                        else
+                            throw new Error("Limit exceeded for: REPLY");
+                    }
+                    else if (n + c <= limit) {
+                        newStats.others.M[task].M.count = { N: c + n + "" };
+                        newStats.others.M[task].M.last_posted = {
+                            S: created_at.toISOString(),
+                        };
+                    }
+                    else
+                        throw new Error("Limit exceeded for: REPLY");
+                    const request = https.request("https://api.twitter.com/2/tweets", {
+                        method: "POST",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
                         },
-                    },
-                    TableName: "Tweets",
-                };
-                dynamodb.updateItem(updateTweetParams, (err, data) => {
-                    if (err)
-                        return next(new app_error_1.default(err.message, 501));
+                    }, (resp) => {
+                        let data = "";
+                        resp.on("data", (chunk) => {
+                            data += chunk.toString();
+                        });
+                        resp.on("error", (err) => {
+                            console.error(err);
+                        });
+                        resp.on("end", () => {
+                            data = JSON.parse(data);
+                            if (data.error) {
+                                return next(new app_error_1.default(data.error, 503));
+                            }
+                            // adding task record to DB
+                            const updateTweetParams = {
+                                Key: {
+                                    id: { S: id },
+                                },
+                                AttributeUpdates: {
+                                    acted_by: {
+                                        Action: "ADD",
+                                        Value: {
+                                            L: [{ S: mid }],
+                                        },
+                                    },
+                                },
+                                TableName: "Tweets",
+                            };
+                            dynamodb.updateItem(updateTweetParams, (err, data) => {
+                                if (err)
+                                    return next(new app_error_1.default(err.message, 501));
+                                const updateUserParams = {
+                                    Key: { id: { S: mid } },
+                                    UpdateExpression: "SET #stats=:stats",
+                                    ExpressionAttributeNames: {
+                                        "#stats": "stats",
+                                    },
+                                    ExpressionAttributeValues: {
+                                        ":stats": { M: newStats },
+                                    },
+                                    TableName: "Users",
+                                };
+                                dynamodb.updateItem(updateUserParams, (err, data) => {
+                                    if (err)
+                                        return next(new app_error_1.default(err.message, 503));
+                                    res.json({
+                                        status: true,
+                                        data: {
+                                            message: "Tweet replied to",
+                                            limit_exceeded: c + n === limit,
+                                        },
+                                    });
+                                });
+                            });
+                        });
+                    });
+                    request.write(JSON.stringify(body));
+                    request.end();
+                }
+                catch (error) {
                     res.json({
                         status: true,
-                        message: "Tweet replied to",
+                        data: {
+                            limit_exceeded: true,
+                            message: error.message,
+                        },
                     });
-                });
-            });
+                }
+            }
+            else
+                return next(new app_error_1.default("Subscription not found", 404));
         });
-        request.write(JSON.stringify(body));
-        request.end();
     }
     catch (error) {
         return next(new app_error_1.default(error.message, 501));
