@@ -7,4 +7,6 @@ const webhookRouter = (0, express_1.Router)();
 webhookRouter.post("/member-added", webhook_1.memberAdded);
 // member deleted
 webhookRouter.post("/member-deleted", webhook_1.memberDeleted);
+// member updated
+webhookRouter.post("/member-updated", webhook_1.memberUpdated);
 exports.default = webhookRouter;

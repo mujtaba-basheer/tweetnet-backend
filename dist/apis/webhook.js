@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.memberDeleted = exports.memberAdded = void 0;
+exports.memberUpdated = exports.memberDeleted = exports.memberAdded = void 0;
 const app_error_1 = require("../utils/app-error");
 const subscription_1 = require("../data/subscription");
 const dotenv_1 = require("dotenv");
@@ -119,3 +119,81 @@ const memberDeleted = async (req, res, next) => {
     }
 };
 exports.memberDeleted = memberDeleted;
+const memberUpdated = async (req, res, next) => {
+    try {
+        const user = req.body;
+        console.log(JSON.stringify(user));
+        const { id, email, membership, profile, created_at } = user;
+        const last_posted = new Date().toISOString();
+        const usernames = [profile["twitter-handle"]];
+        const sub_details = subscription_1.default.find((x) => x.sid === membership.subscribed_to);
+        if (sub_details && sub_details.usernames === 3) {
+            usernames.push(profile["twitter-handle-second"]);
+            usernames.push(profile["twitter-handle-third"]);
+        }
+        res.json({
+            status: true,
+        });
+        // const params: AWS.DynamoDB.PutItemInput = {
+        //   Item: {
+        //     id: { S: id },
+        //     email: { S: email },
+        //     profile: {
+        //       M: {
+        //         usernames: {
+        //           L: usernames.map((u) => ({ S: u.replace("@", "") })),
+        //         },
+        //       },
+        //     },
+        //     membership: {
+        //       M: {
+        //         id: {
+        //           S: membership.id,
+        //         },
+        //         staus: {
+        //           S: membership.status,
+        //         },
+        //         subscribed_to: {
+        //           S: membership.subscribed_to,
+        //         },
+        //       },
+        //     },
+        //     stats: {
+        //       M: {
+        //         like: {
+        //           M: {
+        //             count: { N: "0" },
+        //             last_posted: { S: last_posted },
+        //           },
+        //         },
+        //         retweet: {
+        //           M: {
+        //             count: { N: "0" },
+        //             last_posted: { S: last_posted },
+        //           },
+        //         },
+        //         reply: {
+        //           M: {
+        //             count: { N: "0" },
+        //             last_posted: { S: last_posted },
+        //           },
+        //         },
+        //       },
+        //     },
+        //     created_at: { S: created_at },
+        //   },
+        //   TableName: "Users",
+        // };
+        // dynamodb.putItem(params, (err, data) => {
+        //   if (err) return next(new AppError(err.message, 503));
+        //   res.json({
+        //     status: true,
+        //     message: "User Added to DB",
+        //   });
+        // });
+    }
+    catch (error) {
+        throw new app_error_1.default(error.message, 500);
+    }
+};
+exports.memberUpdated = memberUpdated;
