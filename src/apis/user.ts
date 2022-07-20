@@ -220,9 +220,20 @@ export const forwardTweets = catchAsync(
       };
       stats: {
         M: {
-          like: { M: Stat };
-          retweet: { M: Stat };
-          reply: { M: Stat };
+          self: {
+            M: {
+              like: { M: Stat };
+              retweet: { M: Stat };
+              reply: { M: Stat };
+            };
+          };
+          others: {
+            M: {
+              like: { M: Stat };
+              retweet: { M: Stat };
+              reply: { M: Stat };
+            };
+          };
         };
       };
       created_at: { S: string };
@@ -267,7 +278,7 @@ export const forwardTweets = catchAsync(
         const user = data.Item as unknown as User;
         const created_at = new Date();
         const putTweets: FormattedForwardTweets = [];
-        const newStats = Object.assign({}, user.stats);
+        const newStats = Object.assign({}, user.stats.M);
         const messages: { tag: string; status: boolean; message: string }[] =
           [];
         for (const tweet of forwardTweets) {
@@ -275,7 +286,7 @@ export const forwardTweets = catchAsync(
           let {
             count: { N: count },
             last_posted: { S: last_posted },
-          } = newStats.M[task].M;
+          } = newStats.self.M[task].M;
           let c = +count;
           const sid = user.membership.M.subscribed_to.S;
           const n = 1;
@@ -290,15 +301,15 @@ export const forwardTweets = catchAsync(
             try {
               if (last_posted_date < created_at_date) {
                 if (n <= limit) {
-                  newStats.M[task].M.count = { N: n + "" };
-                  newStats.M[task].M.last_posted = {
+                  newStats.self.M[task].M.count = { N: n + "" };
+                  newStats.self.M[task].M.last_posted = {
                     S: created_at.toISOString(),
                   };
                 } else
                   throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
               } else if (n + c <= limit) {
-                newStats.M[task].M.count = { N: c + n + "" };
-                newStats.M[task].M.last_posted = {
+                newStats.self.M[task].M.count = { N: c + n + "" };
+                newStats.self.M[task].M.last_posted = {
                   S: created_at.toISOString(),
                 };
               } else
@@ -349,7 +360,7 @@ export const forwardTweets = catchAsync(
                 "#stats": "stats",
               },
               ExpressionAttributeValues: {
-                ":stats": newStats,
+                ":stats": { M: newStats },
               },
               TableName: "Users",
             };

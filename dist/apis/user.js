@@ -149,11 +149,11 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
             const user = data.Item;
             const created_at = new Date();
             const putTweets = [];
-            const newStats = Object.assign({}, user.stats);
+            const newStats = Object.assign({}, user.stats.M);
             const messages = [];
             for (const tweet of forwardTweets) {
                 const { task } = tweet;
-                let { count: { N: count }, last_posted: { S: last_posted }, } = newStats.M[task].M;
+                let { count: { N: count }, last_posted: { S: last_posted }, } = newStats.self.M[task].M;
                 let c = +count;
                 const sid = user.membership.M.subscribed_to.S;
                 const n = 1;
@@ -166,8 +166,8 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                     try {
                         if (last_posted_date < created_at_date) {
                             if (n <= limit) {
-                                newStats.M[task].M.count = { N: n + "" };
-                                newStats.M[task].M.last_posted = {
+                                newStats.self.M[task].M.count = { N: n + "" };
+                                newStats.self.M[task].M.last_posted = {
                                     S: created_at.toISOString(),
                                 };
                             }
@@ -175,8 +175,8 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                                 throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
                         }
                         else if (n + c <= limit) {
-                            newStats.M[task].M.count = { N: c + n + "" };
-                            newStats.M[task].M.last_posted = {
+                            newStats.self.M[task].M.count = { N: c + n + "" };
+                            newStats.self.M[task].M.last_posted = {
                                 S: created_at.toISOString(),
                             };
                         }
@@ -228,7 +228,7 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                             "#stats": "stats",
                         },
                         ExpressionAttributeValues: {
-                            ":stats": newStats,
+                            ":stats": { M: newStats },
                         },
                         TableName: "Users",
                     };
