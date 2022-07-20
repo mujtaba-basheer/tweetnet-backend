@@ -53,22 +53,48 @@ const memberAdded = async (req, res, next) => {
                 },
                 stats: {
                     M: {
-                        like: {
+                        self: {
                             M: {
-                                count: { N: "0" },
-                                last_posted: { S: last_posted },
+                                like: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted },
+                                    },
+                                },
+                                retweet: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted },
+                                    },
+                                },
+                                reply: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted },
+                                    },
+                                },
                             },
                         },
-                        retweet: {
+                        others: {
                             M: {
-                                count: { N: "0" },
-                                last_posted: { S: last_posted },
-                            },
-                        },
-                        reply: {
-                            M: {
-                                count: { N: "0" },
-                                last_posted: { S: last_posted },
+                                like: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted },
+                                    },
+                                },
+                                retweet: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted },
+                                    },
+                                },
+                                reply: {
+                                    M: {
+                                        count: { N: "0" },
+                                        last_posted: { S: last_posted },
+                                    },
+                                },
                             },
                         },
                     },
