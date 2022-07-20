@@ -19,6 +19,7 @@ const dynamodb = new AWS.DynamoDB({
 type User = {
   email: string;
   id: string;
+  member_id?: string;
   name: string;
   profile: {
     "twitter-handle": string;
@@ -33,9 +34,21 @@ type User = {
   };
   username: string[];
   stats: {
-    like: Stat;
-    retweet: Stat;
-    reply: Stat;
+    self: {
+      like: Stat;
+      retweet: Stat;
+      reply: Stat;
+    };
+    others: {
+      like: Stat;
+      retweet: Stat;
+      reply: Stat;
+    };
+  };
+  new_membership?: {
+    id: string;
+    status: string;
+    subscribed_to: string;
   };
   created_at: string;
 };
@@ -306,18 +319,38 @@ export const membershipChanged = async (
         };
       };
     };
+    stats: {
+      M: {
+        self: {
+          M: {
+            like: Stat;
+            retweet: Stat;
+            reply: Stat;
+          };
+        };
+        others: {
+          M: {
+            like: Stat;
+            retweet: Stat;
+            reply: Stat;
+          };
+        };
+      };
+    };
+  };
+  type Stat = {
+    count: number;
+    last_posted: DateConstructor;
   };
 
   try {
     const user = req.body as User;
-    console.log(JSON.stringify(user));
-    return res.json({ status: true });
 
-    const { id, profile } = user;
+    const { member_id, new_membership } = user;
 
     const getUserParams: AWS.DynamoDB.GetItemInput = {
       Key: {
-        id: { S: id },
+        id: { S: member_id },
       },
       TableName: "Users",
     };
@@ -327,29 +360,94 @@ export const membershipChanged = async (
 
       const userRecord: UserRecord = data.Item as UserRecord;
       const { membership } = userRecord;
-
-      const usernames: string[] = [profile["twitter-handle"]];
-      const sub_details = limits.find(
-        (x) => x.sid === membership.M.subscribed_to.S
-      );
-      if (sub_details && sub_details.usernames === 3) {
-        usernames.push(profile["twitter-handle-second"]);
-        usernames.push(profile["twitter-handle-third"]);
-      }
+      const last_posted = new Date().toISOString();
 
       const updateUserParams: AWS.DynamoDB.UpdateItemInput = {
         Key: {
-          id: { S: id },
+          id: { S: member_id },
         },
-        UpdateExpression: "SET #P = :p",
+        UpdateExpression: "SET #M = :m, #S = :s",
         ExpressionAttributeNames: {
-          "#P": "profile",
+          "#M": "membership",
+          "#S": "stats",
         },
         ExpressionAttributeValues: {
-          ":p": {
+          ":m": {
             M: {
-              usernames: {
-                L: usernames.map((x) => ({ S: x })),
+              id: { S: new_membership.id },
+              status: { S: new_membership.status },
+              subscribed_to: { S: new_membership.subscribed_to },
+            },
+          },
+          ":s": {
+            M: {
+              self: {
+                M: {
+                  like: {
+                    M: {
+                      count: {
+                        N: "0",
+                      },
+                      last_posted: {
+                        S: last_posted,
+                      },
+                    },
+                  },
+                  reply: {
+                    M: {
+                      count: {
+                        N: "0",
+                      },
+                      last_posted: {
+                        S: last_posted,
+                      },
+                    },
+                  },
+                  retweet: {
+                    M: {
+                      count: {
+                        N: "0",
+                      },
+                      last_posted: {
+                        S: last_posted,
+                      },
+                    },
+                  },
+                },
+              },
+              others: {
+                M: {
+                  like: {
+                    M: {
+                      count: {
+                        N: "0",
+                      },
+                      last_posted: {
+                        S: last_posted,
+                      },
+                    },
+                  },
+                  reply: {
+                    M: {
+                      count: {
+                        N: "0",
+                      },
+                      last_posted: {
+                        S: last_posted,
+                      },
+                    },
+                  },
+                  retweet: {
+                    M: {
+                      count: {
+                        N: "0",
+                      },
+                      last_posted: {
+                        S: last_posted,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -364,7 +462,7 @@ export const membershipChanged = async (
         }
         res.json({
           status: true,
-          message: "User updated",
+          message: "User membership updated",
         });
       });
     });
