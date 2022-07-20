@@ -17,7 +17,7 @@ webhookRouter.post("/member-deleted", memberDeleted);
 // member updated
 webhookRouter.post("/member-updated", memberUpdated);
 
-// membership changed
+// membership changedd
 webhookRouter.post("/membership-changed", membershipChanged);
 
 export default webhookRouter;
