@@ -168,82 +168,102 @@ export const memberUpdated = async (
   res: Response,
   next: NextFunction
 ) => {
+  type UserRecord = {
+    membership: {
+      M: {};
+    };
+  };
+
   try {
     const user = req.body as User;
     console.log(JSON.stringify(user));
 
     const { id, email, membership, profile, created_at } = user;
-    const last_posted = new Date().toISOString();
 
-    const usernames: string[] = [profile["twitter-handle"]];
-    const sub_details = limits.find((x) => x.sid === membership.subscribed_to);
-    if (sub_details && sub_details.usernames === 3) {
-      usernames.push(profile["twitter-handle-second"]);
-      usernames.push(profile["twitter-handle-third"]);
-    }
+    const getUserParams: AWS.DynamoDB.GetItemInput = {
+      Key: {
+        id: { S: id },
+      },
+      TableName: "Users",
+    };
 
-    res.json({
-      status: true,
+    dynamodb.getItem(getUserParams, (err, data) => {
+      if (err) return next(new AppError(err.message, 503));
+
+      const last_posted = new Date().toISOString();
+
+      const usernames: string[] = [profile["twitter-handle"]];
+      const sub_details = limits.find(
+        (x) => x.sid === membership.subscribed_to
+      );
+      if (sub_details && sub_details.usernames === 3) {
+        usernames.push(profile["twitter-handle-second"]);
+        usernames.push(profile["twitter-handle-third"]);
+      }
+
+      res.json({
+        status: true,
+      });
+
+      // const params: AWS.DynamoDB.PutItemInput = {
+      //   Item: {
+      //     id: { S: id },
+      //     email: { S: email },
+      //     profile: {
+      //       M: {
+      //         usernames: {
+      //           L: usernames.map((u) => ({ S: u.replace("@", "") })),
+      //         },
+      //       },
+      //     },
+      //     membership: {
+      //       M: {
+      //         id: {
+      //           S: membership.id,
+      //         },
+      //         staus: {
+      //           S: membership.status,
+      //         },
+      //         subscribed_to: {
+      //           S: membership.subscribed_to,
+      //         },
+      //       },
+      //     },
+      //     stats: {
+      //       M: {
+      //         like: {
+      //           M: {
+      //             count: { N: "0" },
+      //             last_posted: { S: last_posted },
+      //           },
+      //         },
+      //         retweet: {
+      //           M: {
+      //             count: { N: "0" },
+      //             last_posted: { S: last_posted },
+      //           },
+      //         },
+      //         reply: {
+      //           M: {
+      //             count: { N: "0" },
+      //             last_posted: { S: last_posted },
+      //           },
+      //         },
+      //       },
+      //     },
+      //     created_at: { S: created_at },
+      //   },
+      //   TableName: "Users",
+      // };
+
+      // dynamodb.putItem(params, (err, data) => {
+      //   if (err) return next(new AppError(err.message, 503));
+      //   res.json({
+      //     status: true,
+      //     message: "User Added to DB",
+      //   });
+      // });
     });
-
-    // const params: AWS.DynamoDB.PutItemInput = {
-    //   Item: {
-    //     id: { S: id },
-    //     email: { S: email },
-    //     profile: {
-    //       M: {
-    //         usernames: {
-    //           L: usernames.map((u) => ({ S: u.replace("@", "") })),
-    //         },
-    //       },
-    //     },
-    //     membership: {
-    //       M: {
-    //         id: {
-    //           S: membership.id,
-    //         },
-    //         staus: {
-    //           S: membership.status,
-    //         },
-    //         subscribed_to: {
-    //           S: membership.subscribed_to,
-    //         },
-    //       },
-    //     },
-    //     stats: {
-    //       M: {
-    //         like: {
-    //           M: {
-    //             count: { N: "0" },
-    //             last_posted: { S: last_posted },
-    //           },
-    //         },
-    //         retweet: {
-    //           M: {
-    //             count: { N: "0" },
-    //             last_posted: { S: last_posted },
-    //           },
-    //         },
-    //         reply: {
-    //           M: {
-    //             count: { N: "0" },
-    //             last_posted: { S: last_posted },
-    //           },
-    //         },
-    //       },
-    //     },
-    //     created_at: { S: created_at },
-    //   },
-    //   TableName: "Users",
-    // };
-
-    // dynamodb.putItem(params, (err, data) => {
-    //   if (err) return next(new AppError(err.message, 503));
-    //   res.json({
-    //     status: true,
-    //     message: "User Added to DB",
-    //   });
-    // });
   } catch (error) {
     throw new AppError(error.message, 500);
   }
