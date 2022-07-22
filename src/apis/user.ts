@@ -114,90 +114,199 @@ export const getMyTweets = catchAsync(
     res: Response,
     next: NextFunction
   ) => {
-    const token = req.headers.authorization as string;
-    const user_id = req.user.data.id;
-    const user = req.user.data;
+    type User = {
+      stats: {
+        M: {
+          self: {
+            M: {
+              like: Stats;
+              reply: Stats;
+              retweet: Stats;
+            };
+          };
+        };
+      };
+      membership: {
+        M: {
+          subscribed_to: { S: string };
+        };
+      };
+    };
+    type Stats = {
+      M: {
+        count: { N: string };
+        last_posted: { S: string };
+      };
+    };
 
-    const request = https.request(
-      `https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&tweet.fields=created_at`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
+    try {
+      const token = req.headers.authorization as string;
+      const { id: user_id, mid } = req.user.data;
+      const author = req.user.data;
+
+      // checking if all limits have been exceeded
+      const getUserParams: AWS.DynamoDB.GetItemInput = {
+        Key: {
+          id: { S: mid },
         },
-      },
-      (resp) => {
-        let data = "";
-        resp.on("data", (chunk) => {
-          data += chunk.toString();
-        });
-        resp.on("error", (err) => {
+        TableName: "Users",
+      };
+      dynamodb.getItem(getUserParams, (err, data) => {
+        if (err || !data.Item) {
           return next(new AppError(err.message, 503));
-        });
-        resp.on("end", () => {
-          const tweeetsResp: TweetsResp = JSON.parse(data);
+        }
 
-          if (resp.statusCode !== 200)
-            return next(new AppError(tweeetsResp.title, resp.statusCode));
+        const user: User = data.Item as User;
+        const present_date = new Date().toISOString();
+        const {
+          stats: {
+            M: {
+              self: { M: stats },
+            },
+          },
+          membership: {
+            M: {
+              subscribed_to: { S: subscribed_to },
+            },
+          },
+        } = user;
 
-          const { data: tweets, includes } = tweeetsResp;
+        const limit_o = limits.find((x) => x.sid === subscribed_to);
+        if (limit_o) {
+          const {
+            limit: { self: limit },
+          } = limit_o;
+          let flag = true;
 
-          for (const tweet of tweets) {
-            const d = new Date(`${tweet.created_at}`);
-            tweet.created_at = { date: "", time: "" } as
-              | string & { date: string; time: string };
-            const dateArr = d
-              .toLocaleDateString(undefined, {
-                dateStyle: "medium",
-              })
-              .split("-");
-            tweet.created_at.date =
-              `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
-                /undefined/g,
-                ""
-              );
-            tweet.created_at.time = d
-              .toLocaleTimeString(undefined, {
-                timeStyle: "short",
-                hour12: true,
-              })
-              .toUpperCase();
-            if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
-              for (const media_key of tweet.attachments.media_keys) {
-                const media = includes.media.find(
-                  (x) => x.media_key === media_key
-                );
-                let url: string;
-                if (media) {
-                  if (media.type === "photo") url = media.url;
-                  else url = media.preview_image_url;
+          for (const task of Object.keys(stats)) {
+            const {
+              M: {
+                count: { N: count },
+                last_posted: { S: last_posted },
+              },
+            } = stats[task] as Stats;
+            const c = +count;
+            const l = limit[task];
 
-                  if (!tweet.attachement_urls) {
-                    tweet.attachement_urls = [url];
-                  } else tweet.attachement_urls.push(url);
-                }
-              }
+            if (
+              last_posted.substring(0, 10) < present_date.substring(0, 10) ||
+              c < l
+            ) {
+              flag = false;
+              break;
             }
           }
-          for (const tweet of tweets) {
-            delete tweet.attachments;
-          }
 
-          res.json({
-            status: true,
-            data: {
-              author_details: {
-                name: user.name,
-                username: user.username,
-                profile_image_url: user.profile_image_url,
+          if (!flag) {
+            const request = https.request(
+              `https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&tweet.fields=created_at`,
+              {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
               },
-              tweets: tweeetsResp.data,
-            },
-          });
-        });
-      }
-    );
-    request.end();
+              (resp) => {
+                let data = "";
+                resp.on("data", (chunk) => {
+                  data += chunk.toString();
+                });
+                resp.on("error", (err) => {
+                  return next(new AppError(err.message, 503));
+                });
+                resp.on("end", () => {
+                  const tweeetsResp: TweetsResp = JSON.parse(data);
+
+                  if (resp.statusCode !== 200)
+                    return next(
+                      new AppError(tweeetsResp.title, resp.statusCode)
+                    );
+
+                  const { data: tweets, includes } = tweeetsResp;
+
+                  for (const tweet of tweets) {
+                    const d = new Date(`${tweet.created_at}`);
+                    tweet.created_at = { date: "", time: "" } as
+                      | string & { date: string; time: string };
+                    const dateArr = d
+                      .toLocaleDateString(undefined, {
+                        dateStyle: "medium",
+                      })
+                      .split("-");
+                    tweet.created_at.date =
+                      `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(
+                        /undefined/g,
+                        ""
+                      );
+                    tweet.created_at.time = d
+                      .toLocaleTimeString(undefined, {
+                        timeStyle: "short",
+                        hour12: true,
+                      })
+                      .toUpperCase();
+                    if (
+                      tweet.attachments &&
+                      tweet.attachments.media_keys.length > 0
+                    ) {
+                      for (const media_key of tweet.attachments.media_keys) {
+                        const media = includes.media.find(
+                          (x) => x.media_key === media_key
+                        );
+                        let url: string;
+                        if (media) {
+                          if (media.type === "photo") url = media.url;
+                          else url = media.preview_image_url;
+
+                          if (!tweet.attachement_urls) {
+                            tweet.attachement_urls = [url];
+                          } else tweet.attachement_urls.push(url);
+                        }
+                      }
+                    }
+                  }
+                  for (const tweet of tweets) {
+                    delete tweet.attachments;
+                  }
+
+                  res.json({
+                    status: true,
+                    data: {
+                      author_details: {
+                        name: author.name,
+                        username: author.username,
+                        profile_image_url: author.profile_image_url,
+                      },
+                      tweets: tweeetsResp.data,
+                      limit_exceeded: false,
+                    },
+                  });
+                });
+              }
+            );
+            request.end();
+          } else {
+            res.json({
+              status: true,
+              data: {
+                author_details: {
+                  name: author.name,
+                  username: author.username,
+                  profile_image_url: author.profile_image_url,
+                },
+                tweets: [],
+                limit_exceeded: true,
+              },
+            });
+          }
+        } else {
+          return next(
+            new AppError(`Subscription Not Found: ${subscribed_to}`, 404)
+          );
+        }
+      });
+    } catch (error) {
+      return next(new AppError(error.message, 501));
+    }
   }
 );
 

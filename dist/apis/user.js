@@ -46,78 +46,134 @@ const getFollows = async (req, res) => {
 };
 exports.getFollows = getFollows;
 exports.getMyTweets = (0, catch_async_1.default)(async (req, res, next) => {
-    const token = req.headers.authorization;
-    const user_id = req.user.data.id;
-    const user = req.user.data;
-    const request = https.request(`https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&tweet.fields=created_at`, {
-        method: "GET",
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    }, (resp) => {
-        let data = "";
-        resp.on("data", (chunk) => {
-            data += chunk.toString();
-        });
-        resp.on("error", (err) => {
-            return next(new app_error_1.default(err.message, 503));
-        });
-        resp.on("end", () => {
-            const tweeetsResp = JSON.parse(data);
-            if (resp.statusCode !== 200)
-                return next(new app_error_1.default(tweeetsResp.title, resp.statusCode));
-            const { data: tweets, includes } = tweeetsResp;
-            for (const tweet of tweets) {
-                const d = new Date(`${tweet.created_at}`);
-                tweet.created_at = { date: "", time: "" };
-                const dateArr = d
-                    .toLocaleDateString(undefined, {
-                    dateStyle: "medium",
-                })
-                    .split("-");
-                tweet.created_at.date =
-                    `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(/undefined/g, "");
-                tweet.created_at.time = d
-                    .toLocaleTimeString(undefined, {
-                    timeStyle: "short",
-                    hour12: true,
-                })
-                    .toUpperCase();
-                if (tweet.attachments && tweet.attachments.media_keys.length > 0) {
-                    for (const media_key of tweet.attachments.media_keys) {
-                        const media = includes.media.find((x) => x.media_key === media_key);
-                        let url;
-                        if (media) {
-                            if (media.type === "photo")
-                                url = media.url;
-                            else
-                                url = media.preview_image_url;
-                            if (!tweet.attachement_urls) {
-                                tweet.attachement_urls = [url];
-                            }
-                            else
-                                tweet.attachement_urls.push(url);
-                        }
+    try {
+        const token = req.headers.authorization;
+        const { id: user_id, mid } = req.user.data;
+        const author = req.user.data;
+        // checking if all limits have been exceeded
+        const getUserParams = {
+            Key: {
+                id: { S: mid },
+            },
+            TableName: "Users",
+        };
+        dynamodb.getItem(getUserParams, (err, data) => {
+            if (err || !data.Item) {
+                return next(new app_error_1.default(err.message, 503));
+            }
+            const user = data.Item;
+            const present_date = new Date().toISOString();
+            const { stats: { M: { self: { M: stats }, }, }, membership: { M: { subscribed_to: { S: subscribed_to }, }, }, } = user;
+            const limit_o = subscription_1.default.find((x) => x.sid === subscribed_to);
+            if (limit_o) {
+                const { limit: { self: limit }, } = limit_o;
+                let flag = true;
+                for (const task of Object.keys(stats)) {
+                    const { M: { count: { N: count }, last_posted: { S: last_posted }, }, } = stats[task];
+                    const c = +count;
+                    const l = limit[task];
+                    if (last_posted.substring(0, 10) < present_date.substring(0, 10) ||
+                        c < l) {
+                        flag = false;
+                        break;
                     }
                 }
+                if (!flag) {
+                    const request = https.request(`https://api.twitter.com/2/users/${user_id}/tweets?max_results=100&exclude=replies,retweets&expansions=author_id,attachments.media_keys&media.fields=media_key,type,url,preview_image_url&tweet.fields=created_at`, {
+                        method: "GET",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }, (resp) => {
+                        let data = "";
+                        resp.on("data", (chunk) => {
+                            data += chunk.toString();
+                        });
+                        resp.on("error", (err) => {
+                            return next(new app_error_1.default(err.message, 503));
+                        });
+                        resp.on("end", () => {
+                            const tweeetsResp = JSON.parse(data);
+                            if (resp.statusCode !== 200)
+                                return next(new app_error_1.default(tweeetsResp.title, resp.statusCode));
+                            const { data: tweets, includes } = tweeetsResp;
+                            for (const tweet of tweets) {
+                                const d = new Date(`${tweet.created_at}`);
+                                tweet.created_at = { date: "", time: "" };
+                                const dateArr = d
+                                    .toLocaleDateString(undefined, {
+                                    dateStyle: "medium",
+                                })
+                                    .split("-");
+                                tweet.created_at.date =
+                                    `${dateArr[1]} ${dateArr[0]}, ${dateArr[2]}`.replace(/undefined/g, "");
+                                tweet.created_at.time = d
+                                    .toLocaleTimeString(undefined, {
+                                    timeStyle: "short",
+                                    hour12: true,
+                                })
+                                    .toUpperCase();
+                                if (tweet.attachments &&
+                                    tweet.attachments.media_keys.length > 0) {
+                                    for (const media_key of tweet.attachments.media_keys) {
+                                        const media = includes.media.find((x) => x.media_key === media_key);
+                                        let url;
+                                        if (media) {
+                                            if (media.type === "photo")
+                                                url = media.url;
+                                            else
+                                                url = media.preview_image_url;
+                                            if (!tweet.attachement_urls) {
+                                                tweet.attachement_urls = [url];
+                                            }
+                                            else
+                                                tweet.attachement_urls.push(url);
+                                        }
+                                    }
+                                }
+                            }
+                            for (const tweet of tweets) {
+                                delete tweet.attachments;
+                            }
+                            res.json({
+                                status: true,
+                                data: {
+                                    author_details: {
+                                        name: author.name,
+                                        username: author.username,
+                                        profile_image_url: author.profile_image_url,
+                                    },
+                                    tweets: tweeetsResp.data,
+                                    limit_exceeded: false,
+                                },
+                            });
+                        });
+                    });
+                    request.end();
+                }
+                else {
+                    res.json({
+                        status: true,
+                        data: {
+                            author_details: {
+                                name: author.name,
+                                username: author.username,
+                                profile_image_url: author.profile_image_url,
+                            },
+                            tweets: [],
+                            limit_exceeded: true,
+                        },
+                    });
+                }
             }
-            for (const tweet of tweets) {
-                delete tweet.attachments;
+            else {
+                return next(new app_error_1.default(`Subscription Not Found: ${subscribed_to}`, 404));
             }
-            res.json({
-                status: true,
-                data: {
-                    author_details: {
-                        name: user.name,
-                        username: user.username,
-                        profile_image_url: user.profile_image_url,
-                    },
-                    tweets: tweeetsResp.data,
-                },
-            });
         });
-    });
-    request.end();
+    }
+    catch (error) {
+        return next(new app_error_1.default(error.message, 501));
+    }
 });
 exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
     try {
