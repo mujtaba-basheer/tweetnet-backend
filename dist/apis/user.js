@@ -207,15 +207,17 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
             const putTweets = [];
             const newStats = Object.assign({}, user.stats.M);
             const messages = [];
-            for (const tweet of forwardTweets) {
-                const { task } = tweet;
-                let { count: { N: count }, last_posted: { S: last_posted }, } = newStats.self.M[task].M;
-                let c = +count;
-                const sid = user.membership.M.subscribed_to.S;
-                const n = 1;
-                const limit_o = subscription_1.default.find((x) => x.sid === sid);
-                // checking daily limits
-                if (limit_o) {
+            let flag = true;
+            const tasksSet = new Set(["like", "reply", "retweet"]);
+            const sid = user.membership.M.subscribed_to.S;
+            const limit_o = subscription_1.default.find((x) => x.sid === sid);
+            if (limit_o) {
+                for (const tweet of forwardTweets) {
+                    const { task } = tweet;
+                    tasksSet.delete(task);
+                    let { count: { N: count }, last_posted: { S: last_posted }, } = newStats.self.M[task].M;
+                    let c = +count;
+                    const n = 1;
                     const limit = limit_o.limit.self[task];
                     const created_at_date = created_at.toISOString().substring(0, 10);
                     const last_posted_date = last_posted.substring(0, 10);
@@ -226,6 +228,8 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                                 newStats.self.M[task].M.last_posted = {
                                     S: created_at.toISOString(),
                                 };
+                                if (n < limit)
+                                    flag = false;
                             }
                             else
                                 throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
@@ -235,6 +239,8 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                             newStats.self.M[task].M.last_posted = {
                                 S: created_at.toISOString(),
                             };
+                            if (n + c < limit)
+                                flag = false;
                         }
                         else
                             throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
@@ -254,9 +260,17 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                         continue;
                     }
                 }
-                else
-                    return next(new app_error_1.default("Subscription not found", 404));
+                for (const task of Array.from(tasksSet)) {
+                    const limit = limit_o.limit.self[task];
+                    const created_at_date = created_at.toISOString().substring(0, 10);
+                    const last_posted_date = newStats.self.M[task].M.last_posted.S.substring(0, 10);
+                    const count = +newStats.self.M[task].M.count.N;
+                    if (last_posted_date < created_at_date || count < limit)
+                        flag = false;
+                }
             }
+            else
+                return next(new app_error_1.default("Subscription not found", 404));
             if (putTweets.length > 0) {
                 const putTweetsParams = {
                     RequestItems: {
@@ -293,7 +307,7 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
                             return next(new app_error_1.default(err.message, 503));
                         res.json({
                             status: true,
-                            data: messages,
+                            data: { messages, limit_exceeded: flag },
                         });
                     });
                 });
@@ -301,7 +315,7 @@ exports.forwardTweets = (0, catch_async_1.default)(async (req, res, next) => {
             else
                 return res.json({
                     status: true,
-                    data: messages,
+                    data: { messages, limit_exceeded: flag },
                 });
         });
     }

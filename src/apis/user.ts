@@ -390,19 +390,23 @@ export const forwardTweets = catchAsync(
         const newStats = Object.assign({}, user.stats.M);
         const messages: { tag: string; status: boolean; message: string }[] =
           [];
-        for (const tweet of forwardTweets) {
-          const { task } = tweet;
-          let {
-            count: { N: count },
-            last_posted: { S: last_posted },
-          } = newStats.self.M[task].M;
-          let c = +count;
-          const sid = user.membership.M.subscribed_to.S;
-          const n = 1;
-          const limit_o = limits.find((x) => x.sid === sid);
+        let flag = true;
+        const tasksSet = new Set<ValidTask>(["like", "reply", "retweet"]);
+        const sid = user.membership.M.subscribed_to.S;
+        const limit_o = limits.find((x) => x.sid === sid);
 
-          // checking daily limits
-          if (limit_o) {
+        if (limit_o) {
+          for (const tweet of forwardTweets) {
+            const { task } = tweet;
+            tasksSet.delete(task);
+            let {
+              count: { N: count },
+              last_posted: { S: last_posted },
+            } = newStats.self.M[task].M;
+            let c = +count;
+
+            const n = 1;
+
             const limit = limit_o.limit.self[task];
             const created_at_date = created_at.toISOString().substring(0, 10);
             const last_posted_date = last_posted.substring(0, 10);
@@ -414,6 +418,7 @@ export const forwardTweets = catchAsync(
                   newStats.self.M[task].M.last_posted = {
                     S: created_at.toISOString(),
                   };
+                  if (n < limit) flag = false;
                 } else
                   throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
               } else if (n + c <= limit) {
@@ -421,6 +426,7 @@ export const forwardTweets = catchAsync(
                 newStats.self.M[task].M.last_posted = {
                   S: created_at.toISOString(),
                 };
+                if (n + c < limit) flag = false;
               } else
                 throw new Error(`Limit exceeded for: ${task.toUpperCase()}`);
 
@@ -438,8 +444,20 @@ export const forwardTweets = catchAsync(
               });
               continue;
             }
-          } else return next(new AppError("Subscription not found", 404));
-        }
+          }
+
+          for (const task of Array.from(tasksSet)) {
+            const limit = limit_o.limit.self[task];
+            const created_at_date = created_at.toISOString().substring(0, 10);
+            const last_posted_date = newStats.self.M[
+              task
+            ].M.last_posted.S.substring(0, 10);
+            const count = +newStats.self.M[task].M.count.N;
+
+            if (last_posted_date < created_at_date || count < limit)
+              flag = false;
+          }
+        } else return next(new AppError("Subscription not found", 404));
 
         if (putTweets.length > 0) {
           const putTweetsParams: AWS.DynamoDB.BatchWriteItemInput = {
@@ -479,14 +497,14 @@ export const forwardTweets = catchAsync(
 
               res.json({
                 status: true,
-                data: messages,
+                data: { messages, limit_exceeded: flag },
               });
             });
           });
         } else
           return res.json({
             status: true,
-            data: messages,
+            data: { messages, limit_exceeded: flag },
           });
       });
     } catch (error) {
